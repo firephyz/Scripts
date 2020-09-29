@@ -1,0 +1,14 @@
+(0) command_registry: handles core:confirm event
+  handle_command_event():
+  calls two core:confirm handlers
+    atom-ide-debugger/lib/ui/DebuggerLaunchAttachUI.js: 135
+      closes debug UI component
+    nuclide-debugger-common/AutoGenLaunchAttachUiComponent.js: 429
+      starts debugger (1)
+
+(1) AutoGenLaunchAttachUIComponent
+  attaches atom command core:confirm and its associated handler
+  to the debug UI component. Command gets destroyed when UI component
+  is destroyed. Calls ~this.button_handler.
+
+  Handles confirm button click
