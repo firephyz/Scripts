@@ -1,3 +1,6 @@
+# Simulate a PDE for modeling the dynamics of a bubble.
+# <PDE>
+
 import asyncio
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -36,16 +39,18 @@ class SimpleLogger:
 log = SimpleLogger()
 
 def main():
-    global N, xs, grid, space, points, path
+    global N, xs, grid, space, points, path, points1
 
     N = 5001;
     xs = np.linspace(-1,1,N)
     grid = np.array(np.meshgrid(xs, xs, indexing='ij'))
 
     space = compute_space(grid, 462)
-    points = compute_curve_neighbors(space, [15.2, 15.30])
+    points = compute_curve_neighbors(space, [15.23, 15.25])
+    points1 = compute_curve_neighbors(space.T, [15.23, 15.25])
 
     path = []; path = compute_curve(space)
+    path = np.squeeze(np.array(path))
 
 
 def compute_curve(space):
@@ -54,30 +59,44 @@ def compute_curve(space):
     iso_line = 15.25
 
     log_diff = np.log(np.abs(space - iso_line))
-    start_point = np.array(np.nonzero(log_diff == log_diff.min())).reshape((2,))
-    lpath = [start_point]
-    rpath = [start_point]
+    start_point = np.array(np.nonzero(log_diff == log_diff.min())).reshape((2,1))
 
-    while (len(rpath) != 1000) and ((len(lpath) == 1) or (not np.array_equal(lpath[-1], rpath[-1]))):
-        log.log('----------------------------------------------------')
-        #l_diffs = compute_neighbor_diffs(metaball_space, lpath[-1])
-        r_diffs = compute_neighbor_diffs(space, rpath[-1])
+    path = [start_point]
+    point = start_point
+    for i in range(20):
+        diffs = compute_neighbor_diffs(space, point)
+        print("***\n" + str(diffs))
+        point = np.vectorize(int)(np.round(diffs[0,:].reshape((2,1))))
+        path += [point]
 
-        #l_next_point = compute_next_point(l_diffs)
-        r_next_point = compute_next_point(rpath[-1], r_diffs)
-
-        log.log('Path: ' + str(rpath[-1]))
-        log.log('DiffX: ' + str(r_diffs[:,0]))
-        log.log('DiffY: ' + str(r_diffs[:,1]))
-        log.log('Next: ' + str(r_next_point))
-
-        # lpath.append(l_next_point.reshape((2,)))
-        rpath.append(r_next_point.reshape((2,)))
-
-        log.next_log()
-
-    rpath = np.array(rpath) * 2 / space.shape[0] -1
-    return rpath
+    return path
+    # iso_line = 15.25
+    #
+    # log_diff = np.log(np.abs(space - iso_line))
+    # start_point = np.array(np.nonzero(log_diff == log_diff.min())).reshape((2,))
+    # lpath = [start_point]
+    # rpath = [start_point]
+    #
+    # while (len(rpath) != 200) and ((len(lpath) == 1) or (not np.array_equal(lpath[-1], rpath[-1]))):
+    #     log.log('----------------------------------------------------')
+    #     #l_diffs = compute_neighbor_diffs(metaball_space, lpath[-1])
+    #     r_diffs = compute_neighbor_diffs(space, rpath[-1])
+    #
+    #     #l_next_point = compute_next_point(l_diffs)
+    #     r_next_point = compute_next_point(rpath[-1], r_diffs)
+    #
+    #     log.log('Path: ' + str(rpath[-1]))
+    #     log.log('DiffX: ' + str(r_diffs[:,0]))
+    #     log.log('DiffY: ' + str(r_diffs[:,1]))
+    #     log.log('Next: ' + str(r_next_point))
+    #
+    #     # lpath.append(l_next_point.reshape((2,)))
+    #     rpath.append(r_next_point.reshape((2,)))
+    #
+    #     log.next_log()
+    #
+    # rpath = np.array(rpath) * 2 / space.shape[0] -1
+    # return rpath
 
 
 def compute_next_point(position, diffs):
@@ -85,27 +104,53 @@ def compute_next_point(position, diffs):
     globals()['diffs'] = diffs
     log.log(position)
     avg_deltas = np.abs(diffs - position.reshape((1,2))).mean(0)
-    delta_ratio = avg_deltas[0] / avg_deltas[1]
+    delta_ratio = avg_deltas[1] / avg_deltas[0]
     log.log(avg_deltas)
 
     # compute which dimension we increment along
-    # slightly prefer one to avoid small cycles
     dir_index = [0, 1]
     dir_index[0] = 0 if delta_ratio > 1.00 else 1
     dir_index[1] = (dir_index[0] + 1) % 2
+    log.log('Ratio: ' + str(delta_ratio))
+    log.log('Dir Index: ' + str(dir_index))
 
-    # compute direction to move
-    slope = diffs[2, dir_index[0]] - diffs[0, dir_index[0]]
-    move_dir = 1 if slope >= 0 else -1
-    log.log('Slope: ' + str(np.round(slope, decimals=2)) + ', Move: ' + str(move_dir))
-    slopes[slope_index] = slope
-    slope_index += 1
+    # compute direction to move on increment axis
+    #slope = diffs[2, dir_index[0]] - diffs[0, dir_index[0]]
+    #move_dir = 1 if slope >= 0 else -1
+    inc_dir_delta = position[dir_index[0]] - diffs[1, dir_index[0]]
+    if inc_dir_delta > 0:
+        move_dir = -1
+    elif inc_dir_delta < 0:
+        move_dir = 1
+    else:
+        move_dir = 0
+    log.log('Inc Delta: ' + str(inc_dir_delta) + ', Move: ' + str(move_dir))
+    #slopes[slope_index] = slope
+    #slope_index += 1
+
+    # # compute how far to move on non-increment axis
+    noninc_pos_centered = diffs[1+move_dir,dir_index[1]] - position[dir_index[1]]
+    noninc_delta = int(np.fix(noninc_pos_centered) + np.sign(noninc_pos_centered))
+    log.log('NonInc Delta: ' + str(noninc_delta))
+    # xy_slope = (diffs[2, dir_index[1]] - diffs[0, dir_index[1]]) / slope
+    # non_increment_amount = int(np.round(move_dir * xy_slope))
+    # log.log('XY Slope: ' + str(xy_slope))
+    # log.log('NonInc Amount: ' + str(non_increment_amount))
 
     new_pos = position.copy()
     new_pos[dir_index[0]] += move_dir
-    new_pos[dir_index[1]] = int(np.round(diffs[1+move_dir,dir_index[1]]))
+    new_pos[dir_index[1]] += noninc_delta
+
+    # Around 45-degree slopes, new_pos might cycle back to position
+    if np.array_equal(new_pos, compute_next_point.last_position):
+        new_pos = position.copy()
+        new_pos[dir_index[0]] -= move_dir
+        new_pos[dir_index[1]] -= noninc_delta
+
+    compute_next_point.last_position = position
 
     return new_pos
+compute_next_point.last_position = None
 
 
 def compute_neighbor_diffs(space, point):
@@ -119,6 +164,11 @@ def compute_neighbor_diffs(space, point):
     lr_diffs = np.diff(neighborhood, 1, 1)
     ud_diffs = np.diff(neighborhood, 1, 0)
 
+    log.log(('LR_Diffs: ' + str(lr_diffs[:,0]) + '\n'
+             '          ' + str(lr_diffs[:,1])))
+    log.log(('UD_Diffs: ' + str(ud_diffs[0,:]) + '\n'
+             '          ' + str(ud_diffs[1,:])))
+
     lr_ind_diffs_l = np.append(iso_diffs[:,0:2] / lr_diffs, np.zeros((3,1)), axis=1)
     lr_ind_diffs_r = np.append(np.zeros((3,1)), iso_diffs[:,1:] / lr_diffs, axis=1)
     lr_ind_diffs = lr_ind_diffs_l + lr_ind_diffs_r
@@ -128,6 +178,13 @@ def compute_neighbor_diffs(space, point):
     ud_ind_diffs_d = np.append(np.zeros((1,3)), iso_diffs[1:,:] / ud_diffs, axis=0)
     ud_ind_diffs = ud_ind_diffs_u + ud_ind_diffs_d
     ud_ind_diffs[1,:] /= 2
+
+    log.log(('LR_Ind_Diffs: ' + str(lr_ind_diffs[0,:]) + '\n'
+             '              ' + str(lr_ind_diffs[1,:]) + '\n'
+             '              ' + str(lr_ind_diffs[2,:])))
+    log.log(('UD_Ind_Diffs: ' + str(ud_ind_diffs[0,:]) + '\n'
+             '              ' + str(ud_ind_diffs[1,:]) + '\n'
+             '              ' + str(ud_ind_diffs[2,:])))
 
     diff_x = (close_xs - lr_ind_diffs).mean(1)
     diff_y = (close_ys - ud_ind_diffs).mean(0)
