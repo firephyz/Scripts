@@ -1,0 +1,111 @@
+# Save globals we can modify the environment ptpython starts in
+# (Saving repl in config_ptpython)
+# genv = globals()
+
+class PtpyRunner:
+    history_path = None
+    # should normal interpreter continue after running?
+    __PTPY_CPYTHON_CONTINUE__ = False
+    repl_func = None
+    cleanup_vars = ['__PTPY_REPL__', '__PTPY_CPYTHON_CONTINUE__']
+    cleanup = None
+
+    def __init__(self):
+        import os
+
+        try:
+            from ptpython.repl import embed
+        except ImportError as e:
+            self.cleanup()
+            self.run = None
+            raise e
+
+        self.history_path = os.path.expanduser("~/.ptpython/history")
+        self.repl_func = embed
+        self.cleanup = cleanup
+
+        # Put var in global environment so user can toggle it
+        globals()['__PTPY_CPYTHON_CONTINUE__'] = self.__PTPY_CPYTHON_CONTINUE__
+
+
+    def run(self):
+        import sys
+
+        try:
+            self.repl_func(globals = globals(),
+                           configure = self.config,
+                           history_filename = self.history_path)
+        except Exception as e:
+            raise e
+        finally:
+            continue_normal_repl = globals()['__PTPY_CPYTHON_CONTINUE__']
+            # Remove ptpy bindings in prep for normal repl
+            self.cleanup(self.cleanup_vars)
+
+        if not continue_normal_repl:
+            sys.exit(0)
+
+
+    # Config callback for ptpython.repl.embed
+    def config(self, repl):
+        from ptpython import repl as ptrepl
+        from ptpython.layout import CompletionVisualisation
+
+        # show function sign        print("Exiting...")ature
+        #repl.show_signature = True
+        # POP_UP, MULTI_COLUMN, TOOLBAR
+        repl.completion_visualisation = CompletionVisualisation.MULTI_COLUMN
+        repl.show_line_numbers = True
+        repl.highlight_matching_parenthesis = True
+        repl.wrap_lines = True
+        #repl.enable_mouse_support = True
+        # not compatible with history search
+        repl.complete_while_typing = False
+        repl.enable_history_search = True
+
+        # # save repl instance in global environment
+        # # exec hides the reference to genv before its definition
+        globals()['__PTPY_REPL__'] = repl
+        # exec('del genv["genv"]')
+
+
+###############################################################################
+# Script setup
+###############################################################################
+def main():
+    import sys
+
+    # Setup ptpython if necessary
+    ptpy = None
+    if not '--noptpython' in sys.argv:
+        try:
+            ptpy = PtpyRunner()
+        except ImportError as e:
+            print("REPL ptypython not available. Defaulting to normal REPL.")
+
+    # Perform cleanup before any repl runs
+    cleanup_vars = ['main', 'cleanup', 'PtpyRunner']
+    cleanup(cleanup_vars)
+
+    if not ptpy is None:
+        ptpy.run()
+
+
+def cleanup(vars):
+    env = globals()
+
+    for var in vars:
+        try:
+            exec('del env["' + var + '"]')
+        except KeyError:
+            pass # Nothing to be done, var is already undefined
+
+
+# preimport often used modules
+import os, sys
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+if __name__ == '__main__':
+    main()

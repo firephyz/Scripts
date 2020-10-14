@@ -1,0 +1,13 @@
+prep
+  - setup ?
+install
+  - rm -rf RMP_BUILD_ROOT
+  - make install
+
+ba - source and binary
+bb - binary
+bc - stop after build
+bp - stop after prepare
+bi - stop after install
+bl - check buildroot files
+bs - build source

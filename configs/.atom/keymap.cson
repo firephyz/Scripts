@@ -1,0 +1,6 @@
+'body':
+  'ctrl-n': 'core:move-down'
+  'ctrl-shift-s': "find-and-replace:show-replace"
+
+'.platform-linux':
+  'ctrl-p': 'core:move-up'
