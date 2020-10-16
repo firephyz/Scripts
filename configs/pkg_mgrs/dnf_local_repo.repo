@@ -1,0 +1,5 @@
+[rpmbuild]
+name=local
+enabled=1
+baseurl=/home/builder/rpmbuild/dnf/repo
+metadata_expire=never

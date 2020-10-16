@@ -6,9 +6,15 @@ Version:        2.34
 Release:        1%{?dist}
 Summary:        GNU Binutils
 License:        FIXME
-Source0:        %{name}-%{version}.tar.xz
-Nosource:       0
 BuildArch:      x86_64
+AutoReq:        no
+
+%undefine       _disable_source_fetch
+Source0:        https://ftp.gnu.org/gnu/binutils/%{name}-%{version}.tar.xz
+Source1:        https://ftp.gnu.org/gnu/binutils/%{name}-%{version}.tar.xz.sig
+Nosource:       0
+Nosource:       1
+
 
 ###############################################################################
 # Defines
@@ -21,6 +27,9 @@ BuildArch:      x86_64
 
 %global sourcedir %{_builddir}/%{name}-%{version}
 %global builddir %{_builddir}/%{name}-%{version}-build
+%global install_prefix %{?install_prefix}%{!?install_prefix: %{_prefix}}
+%global num_cpus %{?num_cpus}%{!?num_cpus: %{_smp_mflags}}
+
 
 ###############################################################################
 # Description
@@ -33,6 +42,7 @@ BuildArch:      x86_64
 # Prep
 ###############################################################################
 %prep
+gpg --keyring %{gnu_keyring} --verify %{_sourcedir}/%{name}-%{version}.tar.xz.sig
 %setup -q
 mkdir -p %{builddir}
 
@@ -42,14 +52,16 @@ mkdir -p %{builddir}
 ###############################################################################
 %build
 cd %{builddir}
+#%%global LD_LIB_PATHS "%{_prefix}/lib/gcc/arm-none-eabi/11.0.0:%{_prefix}/arm-none-eabi/lib"
+%global LD_LIB_PATHS ""
 %{sourcedir}/configure \
-    --prefix=%{_prefix} \
+    --prefix=%{install_prefix} \
     --target=arm-none-eabi \
-    --with-lib-path="%{_prefix}lib/gcc/arm-none-eabi/11.0.0:%{_prefix}arm-none-eabi/lib" \
+    --with-lib-path=%{LD_LIB_PATHS} \
     --disable-nls
 
 
-%make_build %{_smp_mflags}
+%make_build -j%{num_cpus}
 
 
 ###############################################################################
@@ -72,7 +84,7 @@ rm -rf %{buildroot}
 ###############################################################################
 %clean
 cd %{_builddir}
-rm -rf %{buildroot}
+%{!?keep_buildroot: rm -rf %{buildroot}}
 rm -rf %{builddir}
 rm -rf %{sourcedir}
 
@@ -83,11 +95,12 @@ rm -rf %{sourcedir}
 %files
   %defattr(0777,-,users)
 
-  /usr/arm-none-eabi
-  /usr/bin
-  %exclude /usr/arm-none-eabi/lib/ldscripts
-  %exclude /usr/share
-  %exclude /usr/src
+  %{install_prefix}/arm-none-eabi
+  %{install_prefix}/bin
+
+  %exclude %doc %{install_prefix}/share
+  %exclude %{install_prefix}/arm-none-eabi/lib
+  %exclude %{install_prefix}/src
 
 
 ###############################################################################
