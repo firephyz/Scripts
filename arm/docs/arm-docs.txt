@@ -1,0 +1,236 @@
+Registers ?
+    APSR
+    SPSR
+    CPSR
+
+Instructions
+    Branch Instructions
+        B                           Branch to target address
+        BX                          branch to target address and change instruction set
+        CBNZ, CBZ               T   Compare and branch if zero/nonzero
+        BL, BLX(immediate)          call subroutine, call subroutine change instruction set
+        BLX(register)               call subroutine and optionally change instruction set
+        BXJ                         Change to jazelle state
+        TBB, TBH                T   Table branch, byte/halfword offsets
+
+    Data processing instructions
+        Rd destion register
+        Rn first operand register
+        Second operand (register or immediate)
+            registers can be LSL, LSR, ASR, ROR, RRX
+
+        Standard
+            ADC                     Add with carry
+            ADD                     add
+            ADR                     form PC relative address ?
+            AND                     bitwise and
+            EOR                     bitwise exclusive or
+            MVN                     bitwise not
+            ORR                     bitwise or
+            BIC                     bitwise bit clear
+            CMN                     compare negative, sets flags
+            CMP                     compare, sets flags
+            MOV                     copy operand to destination
+            ORN                 T   bitwise or not
+            RSB                     reverse subtract, second - first
+            RSC                 T   reverse subtract with carry
+            SBC                     subtract with carry
+            SUB                     subtract
+            TEQ                     test equivalence, set flags
+            TST                     sets flags
+
+    Shift instructions ?
+        ASR(immediate)
+        ASR(register)
+        LSL(immediate)
+        LSL(register)
+        LSR(immediate)
+        LSR(register)
+        ROR(immediate)
+        ROR(register)
+        RRX
+
+        ARM: destination can be PC
+
+    Multiply
+        MLA                     Multiply accumulate
+        MLS                     Multiply subtract
+        MUL                     Multiply
+
+        Unsigned ?
+            UMAAL               Unsigned multipy accumulate accumulate long ?
+            UMLAL               Unsigned multiply accumulate long ?
+            UMULL               Unsigned multiply long
+
+        Signed
+            SMLA{BB,BT,TB,TT}   signed m accumulate halfwords
+            SMLAD               signed m accumulate duald ?
+            SMLAL               signed m accumulate long
+            SMLAL{BB,BT,TB,TT}  s m a l halfwords
+            SMLALD              s m a l dual
+            SMLAW{B,t}          s m a word by halfword
+            SMLSD               s m sub dual
+            SMLSLD              s m sub l dual
+            SMMLA               s most signif word m a
+            SMMLS               s most signif word m sub
+            SMMUL               s most signif word m
+            SMUAD               s dual m add
+            SMUL{BB,BT,TB,TT}   s m halfwords
+            SMULL               s m l
+            SMULW{B,T}          s m word by halfword
+            SMUSD               s dual m sub
+
+    Saturating
+        SSAT                    signed saturate
+        SSAT16                  signed saturate 16
+        USAT                    unsigned saturate
+        USAT16                  unsigned saturate 16
+
+    Saturating Add and Subtract
+        QADD                    add, saturate to 32-bit signed integer
+        QSUB                    sub, saturate to 32-bit signed integer
+        QDADD                   double one value and add second, saturate 32-bit s i
+        QDSUB                   double one value and sub second, saturate 32-bit s i
+
+    Packing and unpacking
+        PKH                     pack halfword
+
+        {U,S}XTAB               extend and add byte
+        {U,S}XTAB16             extend and add 2 bytes to 16
+        {U,S}XTAH               extend and add halfword
+        {U,S}XTB                extend byte
+        {U,S}XTB16              extend dual byte to 16
+        {U,S}XTH                extend 16 to 32
+
+    Parallel addition and subtraction
+        addition and sub on two registers and stores to destination.
+        treats values as two halfwords or 4 bytes
+
+        Prefix
+            {U,S}               signed modulo subvalue width
+            [U]Q                signed saturating
+            {U,S}H              signed halving results
+
+        ADD16                   parallel addition of halfwords
+        ASX                     exchanges halfwords of second, adds top, subs bottom
+        SAX                     exchanges halfwords of second, subs top, adds bottom
+        SUB16                   parallel subtraction of halfwards, second from first
+        ADD8                    parallel addition of bytes
+        SUB8                    parallel subtraction of bytes, second from first
+
+    Divide
+        SCTLR.DZ indicates divide by zero fault detection (only for ARMv7-R):
+            0: returns zero (always on ARMv7-A)
+            1: undefined instruction exception
+
+        ARMv7-R always has them (thumb, ARM optional).
+        ARMv7-A has them (thumb and arm) if has virtualization extension, otherwise optional
+
+        ID_ISAR0.Divide_instrs:
+            0b0001: implemented in Thumb
+            0b0010: implemented in both
+
+        SDIV
+        UDIV
+
+    Misc Data Ops
+        BFC                    Bitfield clear
+        BFI                    bit field insert ?
+        CLZ                    count leading zeros
+        MOVT                   Moves 16-bit imm value to top 16-bits
+        RBIT                   reverse bits
+        REV                    byte-reverse word
+        REV16                  byte-reverse packed halfword
+        REVSH                  byte reverse signed halfword ?
+        SBFX                   signed bit field extract ?
+        SEL                    select bytes using GE flags ?
+        UBFX                   unsigned bit field extract ?
+        USAD8                  unsigned sum of absolute differences ?
+        USADA8                 unsigned sum of absolute differences and accumulate ?
+
+    Status register access
+        MRS                    read APSR
+        MSR(imm)               set APSR
+        MSR(reg)               set APSR
+
+    Load / Store
+        Instructions
+            Data Type             Load       Store       Load unpriv       Store unpriv         Load exclu        Store Exclu
+            word                  LDR        STR         LDRT              STRT                 LDREX             STREX
+            halfword                         STRH                          STRHT                                  STREXH
+            u halfword            LDRH                   LDRHT                                  LDREXH
+            s halfword            LDRSH                  LDRSHT
+            byte                             STRB                          STRBT                                  STREXB
+            u byte                LDRB                   LDRBT                                  LDREXB
+            s byte                LDRSB                  LDRSBT
+            two words             LDRD       STRD
+            64 double                                                                           LDREXD            STREXD
+
+        LDR can load PC
+        Unprivelaged ?
+        Exclusive: shared memory access
+
+        Addressing Modes
+            Uses a base register and an offset
+                register can be 0 to 14
+                Offset can be:
+                    immediate
+                    register (not PC)
+                    scaled register
+            Can be used in 3 ways:
+                Offset, add or subtract offset from base
+                Pre-indexed, same as offset but update base
+                post-indexed, use base, then add/sub, then store into base
+
+    Load / Store Multiple
+        PUSH
+        POP
+        LDM/LDMIA/LDMFD               a
+        LDMDA/LDMFA                   a
+        LDMDB/LDMEA                   a
+        LDMIB/LDMED                   a
+        STM (STMIA, STMEA)            a
+        STMDA (STMED)                 a
+        STMDB (STMFD)                 a
+        STMIB (STMFA)                 a
+
+    Misc
+        CLREX                         clear-exclusive
+        DBG                           debug hint
+        DMB                           data memory barrier
+        DSB                           data synchronization barrier
+        ISB                           instruction synchronization barrier
+        IT                            if-then
+        NOP                           nop
+        PLD,PLDW(imm)                 preload data
+        PLD(literal)                  preload data
+        PLD,PLDW(register)            preload_data
+        PLI(imm, literal)             preload instruction
+        PLI(register)                 preload instruction
+        SETEND                        set endianness
+        SEV                           send event
+        SWP,SWPB                      swap, swap byte, deprecated
+        WFE                           wait for event
+        WFI                           wait for interrupt
+        YIELD                         yield
+
+    Exception gen and handling
+        SVC                           supervisor call
+        BKPT                          software breakpoints
+        SMC                           secure monitor call
+        HVC                           hypervisor call
+        RFE                           return from exception
+        SUBS pc, lr                   subtract, exception return
+        ERET                          exception return
+        LDM                           exception return
+        SRS                           store return state
+
+    Coprocessor
+
+    SIMD
+
+    Floating Point
+
+Application Level Architecture
+
+System Level Architecture
