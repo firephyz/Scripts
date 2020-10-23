@@ -6,20 +6,23 @@
 ###############################################################################
 # Defines
 ###############################################################################
-arch := x86_64
-os_version := fc30
+arch               := x86_64
+os_version         := fc30
 rpm-release-suffix := $(os_version).$(arch)
-packages		:= gcc-bootstrap-10.1.0-1 binutils-2.34-1
+packages           := newlib-3.2.0-1 \
+                      gcc-bootstrap-10.1.0-1 \
+											binutils-2.34-1
 
 # package dep lists for each package
+newlib-3.2.0-requires-list         := gcc-bootstrap-10.1.0-1 binutils-2.34-1
 gcc-bootstrap-10.1.0-requires-list := binutils-2.34-1
-binutils-2.34-requires-list :=
+binutils-2.34-requires-list        :=
 
 rpm-db-dir	  := ./rpmdb
 build-root	  := ./BUILDROOT
-rpm-dir		 := ./RPMS/x86_64
-srpm-dir		:= ./SRPMS
-build-dir	   := ./BUILD
+rpm-dir		    := ./RPMS/x86_64
+srpm-dir	  	:= ./SRPMS
+build-dir	    := ./BUILD
 
 # select correct db to update when installing packages
 rpml			:= rpm --dbpath=$(shell readlink -f $(rpm-db-dir))
@@ -39,10 +42,6 @@ endef
 define pkg-name
 	$(shell echo $(1) | sed "s/\.${rpm-release-suffix}\.rpm//")
 endef
-# # get pkg-short-name (without version numbers) from full RPM name
-# define pkg-short-name
-# 	$(shell echo $(1) | sed 's/-\([0-9]*[\.-]\)\.x86_64\.rpm//')
-# endef
 # get package full rpm name from package short name without version numbers
 define short-name-to-rpm-path
 	$(call rpm-path,$(shell echo $(packages) | tr ' ' '\n' | grep $(1)))
@@ -77,7 +76,7 @@ endef
 ###############################################################################
 # More defines
 ###############################################################################
-J_FLAG := $(shell [[ -z "${J_FLAG}" ]] && echo 9 || echo "${J_FLAG}")
+JFLAG := $(shell [[ -z "${JFLAG}" ]] && echo 9 || echo "${JFLAG}")
 rpms := $(foreach package,$(packages),$(call rpm-name,$(package)))
 rpm-targets := $(foreach target,$(rpms),$(addprefix $(rpm-dir)/,$(target)))
 install-targets := $(foreach target,$(rpms),$(addsuffix -install,$(addprefix $(rpm-dir)/,$(target))))
@@ -99,6 +98,7 @@ define package-prereqs
 	$(addsuffix -requires,$(1)) \
 	$(call spec-path,$(1))
 endef
+
 .SECONDEXPANSION:
 RPMS/x86_64/%.rpm: $$(call package-prereqs,$$(call stem-to-pkg-name,$$*))
 	@stat $(call rpm-path,$(call stem-to-pkg-name,$*)) > /dev/null 2>&1; \
@@ -106,7 +106,7 @@ RPMS/x86_64/%.rpm: $$(call package-prereqs,$$(call stem-to-pkg-name,$$*))
 	if [[ "$${ret}" == "1" ]]; then					 \
 		echo Building $(call stem-to-pkg-name,$*)...; \
 		rpmbuild --define="install_prefix $(shell readlink -f $(build-root))" \
-				 --define="num_cpus $(J_FLAG)" --dbpath=$(rpm-db-dir) \
+				 --define="num_cpus $(JFLAG)" --dbpath=$(shell readlink -f $(rpm-db-dir)) \
 				 $(rpm-build-debuginfo) $(rpm-build-clean-after) \
 				 -bb $(call spec-path,$(call stem-to-pkg-name,$*)); \
 	fi
@@ -138,11 +138,10 @@ RPMS/x86_64/%-install: $$(call rpm-path,$$(call pkg-name,$$*))
 		$(rpml) --install $(addprefix $(rpm-dir)/,$*); \
 	fi
 
+# install targets for package short names (without version numbers)
 # .SECONDEXPANSION:
 %-install: $$(addsuffix -install,$$(call short-name-to-rpm-path,$$*)) ;
-# .SECONDEXPANSION:
-# %-install: $$(addRPMS/x86_64/gcc-bootstrap-10.1.0.x86_64.rpm)
-# 	$(suffix -install,$(prefix RPMS/x86_64/,$(call rpm-path,$(call pkg-short-name,$*))))
+
 
 uninstall:
 	@echo Uninstalling packages from rpm database...

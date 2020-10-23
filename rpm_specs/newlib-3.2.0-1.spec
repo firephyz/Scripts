@@ -1,20 +1,18 @@
 ###############################################################################
-# GNU GCC bootstrapping compiler for arm-none-eabi targets.
+# Newlib for arm-none-eabi targets.
 ###############################################################################
-Name:           gcc-bootstrap
-Version:        10.1.0
+Name:           newlib
+Version:        3.2.0
 Release:        1%{?dist}
-Summary:        GNU GCC
+Summary:        Newlib C Library
 License:        FIXME
 BuildArch:      x86_64
 AutoReq:        no
-BuildRequires:  binutils == 2.34
-Requires:       binutils == 2.34
+BuildRequires:  gcc-bootstrap == 10.1.0, binutils == 2.34
 
 %undefine       _disable_source_fetch
-Source0:        https://ftp.gnu.org/gnu/gcc/gcc-%{version}/gcc-%{version}.tar.xz
-Source1:        https://ftp.gnu.org/gnu/gcc/gcc-%{version}/gcc-%{version}.tar.xz.sig
-Source2:        armv7-a-profile
+Source0:        ftp://sourceware.org/pub/newlib/%{name}-%{version}.tar.gz
+Source1:        ftp://sourceware.org/pub/newlib/sha512.sum
 Nosource:       0
 Nosource:       1
 
@@ -28,8 +26,8 @@ Nosource:       1
 # so source and debug are combined
 %define _debugsource_packages 0
 
-%global sourcedir %{_builddir}/gcc-%{version}
-%global builddir %{_builddir}/gcc-%{version}-build
+%global sourcedir %{_builddir}/%{name}-%{version}
+%global builddir %{_builddir}/%{name}-%{version}-build
 %global install_prefix %{?install_prefix}%{!?install_prefix: %{_prefix}}
 %global num_cpus %{?num_cpus}%{!?num_cpus: %{_smp_mflags}}
 
@@ -38,19 +36,21 @@ Nosource:       1
 # Description
 ###############################################################################
 %description
-  Packaged bootstrap gcc.
+  Packaged newlib c library.
 
 
 ###############################################################################
 # Prep
 ###############################################################################
 %prep
-gpg --keyring %{gnu_keyring} --verify %{_sourcedir}/gcc-%{version}.tar.xz.sig
+cd %{_sourcedir}
+%define sha512_status $(sha512sum -c %{S:1} 2>&1 | grep %{name}-%{version}.tar.gz | sed 's/.*: //' | grep OK > /dev/null; echo $?)
+$([[ "%sha512_status" -eq  "1" ]] && exit 1 || :)
 
-%setup -q -n gcc-%{version}
+cd %{_builddir}
+cat %{sourcedir}/configure.ac | sed 's/AC_PREREQ(2\.64)/AC_PREREQ(2\.69)/'
+%setup -q
 mkdir -p %{builddir}
-cp -v %{S:2} %{sourcedir}/gcc/config/arm/
-%{sourcedir}/contrib/download_prerequisites
 
 
 ###############################################################################
@@ -58,14 +58,27 @@ cp -v %{S:2} %{sourcedir}/gcc/config/arm/
 ###############################################################################
 %build
 cd %{builddir}
+
+REG_FINI=--enable-newlib-register-fini
+#MB_SUPPORT=--enable-newlib-mb
+  # multibyte support
+ATEXIT_DYN_ALLOC=--disable-newlib-atexit-dynamic-alloc
+  # is already disabled if no syscalls?
+GLOBAL_STDIO=--enable-newlib-global-stdio-streams
+GLOBAL_ATEXIT=--enable-newlib-global-atexit
+NANO_MALLOC=--enable-newlib-nano-malloc
+OPT_SPACE=--enable-target-optspace
+NO_SYSCALLS=--disable-newlib-supplied-syscalls
+
+CONFIGURE_FLAGS=$(echo $REG_FINI $ATEXIT_DYN_ALLOC $GLOBAL_STDIO $GLOBAL_ATEXIT $NANO_MALLOC \
+  $OPT_SPACE $NO_SYSCALLS)
+
+
 %{sourcedir}/configure \
     --prefix=%{install_prefix} \
     --target=arm-none-eabi \
-    --enable-languages=c \
     --enable-multilib \
-    --with-multilib-list=@armv7-a-profile \
-    --without-headers \
-    --disable-libssp
+    $CONFIGURE_FLAGS
 
 %make_build -j%{num_cpus}
 
@@ -79,12 +92,10 @@ rm -rf %{buildroot}
 %make_install
 
 
-
 ###############################################################################
 # Check
 ###############################################################################
 %check
-
 
 
 ###############################################################################
@@ -103,24 +114,11 @@ rm -rf %{sourcedir}
 %files
   %defattr(0777,-,users)
 
-  %{install_prefix}/bin
-  %{install_prefix}/lib
-  %{install_prefix}/lib64
-  %{install_prefix}/libexec
+  %{install_prefix}/arm-none-eabi/include
+  %{install_prefix}/arm-none-eabi/lib
 
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/crt*
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/lib*
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/thumb/crt*
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/thumb/lib*
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/include-fixed
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/install-tools
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/plugin
-  %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/install-tools
-  %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/liblto_plugin*
-  %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/plugin
-  %exclude %{install_prefix}/share
-
-  # %ghost %{install_prefix}/armv7-a-profile
+  # %exclude %{install_prefix}/arm-none-eabi/lib/*.specs
+  %exclude %{install_prefix}/arm-none-eabi/lib/arm/v5te
 
 
 ###############################################################################
