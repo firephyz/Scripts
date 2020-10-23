@@ -1,15 +1,18 @@
 ###############################################################################
 # Build Makefile
 ###############################################################################
+# TODO What rules require the .SECONDEXPANSION directive?
 
 ###############################################################################
 # Defines
 ###############################################################################
-rpm-release	 := -1.fc32.x86_64
-packages		:= gcc-bootstrap-10.1.0 binutils-2.34
+arch := x86_64
+os_version := fc30
+rpm-release-suffix := $(os_version).$(arch)
+packages		:= gcc-bootstrap-10.1.0-1 binutils-2.34-1
 
 # package dep lists for each package
-gcc-bootstrap-10.1.0-requires-list := binutils-2.34
+gcc-bootstrap-10.1.0-requires-list := binutils-2.34-1
 binutils-2.34-requires-list :=
 
 rpm-db-dir	  := ./rpmdb
@@ -30,15 +33,23 @@ define rpm-path
 endef
 # get full RPM name from pkg name
 define rpm-name
-	$(addsuffix $(rpm-release).rpm, $(1))
+	$(addsuffix .$(rpm-release-suffix).rpm, $(1))
 endef
 # get pkg-name from full RPM name
 define pkg-name
-	$(shell echo $(1) | sed 's/-1\.fc32\.x86_64\.rpm//')
+	$(shell echo $(1) | sed "s/\.${rpm-release-suffix}\.rpm//")
+endef
+# # get pkg-short-name (without version numbers) from full RPM name
+# define pkg-short-name
+# 	$(shell echo $(1) | sed 's/-\([0-9]*[\.-]\)\.x86_64\.rpm//')
+# endef
+# get package full rpm name from package short name without version numbers
+define short-name-to-rpm-path
+	$(call rpm-path,$(shell echo $(packages) | tr ' ' '\n' | grep $(1)))
 endef
 # turn make target pkg stem into pkg-name
 define stem-to-pkg-name
-	$(shell echo $(1) | sed 's/-1\.fc32\.x86_64//')
+	$(shell echo $(1) | sed "s/\.${rpm-release-suffix}//")
 endef
 # turn make target pkg stem into pkg-name
 define stem-to-rpm-name
@@ -66,7 +77,7 @@ endef
 ###############################################################################
 # More defines
 ###############################################################################
-J_FLAG := 9
+J_FLAG := $(shell [[ -z "${J_FLAG}" ]] && echo 9 || echo "${J_FLAG}")
 rpms := $(foreach package,$(packages),$(call rpm-name,$(package)))
 rpm-targets := $(foreach target,$(rpms),$(addprefix $(rpm-dir)/,$(target)))
 install-targets := $(foreach target,$(rpms),$(addsuffix -install,$(addprefix $(rpm-dir)/,$(target))))
@@ -95,7 +106,7 @@ RPMS/x86_64/%.rpm: $$(call package-prereqs,$$(call stem-to-pkg-name,$$*))
 	if [[ "$${ret}" == "1" ]]; then					 \
 		echo Building $(call stem-to-pkg-name,$*)...; \
 		rpmbuild --define="install_prefix $(shell readlink -f $(build-root))" \
-				 --define="num_cpus $(J_FLAG)" \
+				 --define="num_cpus $(J_FLAG)" --dbpath=$(rpm-db-dir) \
 				 $(rpm-build-debuginfo) $(rpm-build-clean-after) \
 				 -bb $(call spec-path,$(call stem-to-pkg-name,$*)); \
 	fi
@@ -107,25 +118,31 @@ RPMS/x86_64/%.rpm: $$(call package-prereqs,$$(call stem-to-pkg-name,$$*))
 define pkg-dep-list
 	$(foreach dep,$(1),$(addsuffix -install,$(addprefix $(rpm-dir)/,$(call rpm-name,$(dep)))))
 endef
-.SECOND_EXPANSION:
+#.SECONDEXPANSION:
 %-requires: $$(call pkg-dep-list,$$($$*-requires-list)) ;
 
 
 ###############################################################################
 # Install / Uninstall
 ###############################################################################
-install: $(install-targets)
+install: $(install-targets) ;
 
 # TODO: Can $(rpm-dir) replace start of target?
-.SECONDEXPANSION:
+# .SECONDEXPANSION:
 RPMS/x86_64/%-install: $$(call rpm-path,$$(call pkg-name,$$*))
-	@echo -n Checking for installation of $*:; \
+	@echo -n Checking for installation of $*:" "; \
 	$(rpml) -qa | grep $(call pkg-name,$*);   \
 	ret=$$?; \
 	if [[ "$${ret}" == "1" ]]; then		 \
 		echo -e ' No\n'Installing...;\
 		$(rpml) --install $(addprefix $(rpm-dir)/,$*); \
 	fi
+
+# .SECONDEXPANSION:
+%-install: $$(addsuffix -install,$$(call short-name-to-rpm-path,$$*)) ;
+# .SECONDEXPANSION:
+# %-install: $$(addRPMS/x86_64/gcc-bootstrap-10.1.0.x86_64.rpm)
+# 	$(suffix -install,$(prefix RPMS/x86_64/,$(call rpm-path,$(call pkg-short-name,$*))))
 
 uninstall:
 	@echo Uninstalling packages from rpm database...

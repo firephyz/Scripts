@@ -1,18 +1,17 @@
 ###############################################################################
-# GNU GCC bootstrapping compiler for arm-none-eabi targets.
+# GNU Binutils for arm-none-eabi targets.
 ###############################################################################
-Name:           gcc-bootstrap
-Version:        10.1.0
+Name:           binutils
+Version:        2.34
 Release:        1%{?dist}
-Summary:        GNU GCC
+Summary:        GNU Binutils
 License:        FIXME
 BuildArch:      x86_64
 AutoReq:        no
-BuildRequires:  binutils >= 2.34
-Requires:       binutils >= 2.34
 
-Source0:        https://ftp.gnu.org/gnu/gcc/gcc-%{version}/gcc-%{version}.tar.xz
-Source1:        armv7-a-profile
+%undefine       _disable_source_fetch
+Source0:        https://ftp.gnu.org/gnu/binutils/%{name}-%{version}.tar.xz
+Source1:        https://ftp.gnu.org/gnu/binutils/%{name}-%{version}.tar.xz.sig
 Nosource:       0
 Nosource:       1
 
@@ -26,8 +25,8 @@ Nosource:       1
 # so source and debug are combined
 %define _debugsource_packages 0
 
-%global sourcedir %{_builddir}/gcc-%{version}
-%global builddir %{_builddir}/gcc-%{version}-build
+%global sourcedir %{_builddir}/%{name}-%{version}
+%global builddir %{_builddir}/%{name}-%{version}-build
 %global install_prefix %{?install_prefix}%{!?install_prefix: %{_prefix}}
 %global num_cpus %{?num_cpus}%{!?num_cpus: %{_smp_mflags}}
 
@@ -36,17 +35,16 @@ Nosource:       1
 # Description
 ###############################################################################
 %description
-  Packaged bootstrap gcc.
+  Packaged binutils.
 
 
 ###############################################################################
 # Prep
 ###############################################################################
 %prep
-%setup -q -n gcc-%{version}
+gpg --keyring %{gnu_keyring} --verify %{_sourcedir}/%{name}-%{version}.tar.xz.sig
+%setup -q
 mkdir -p %{builddir}
-cp -v %{S:1} %{sourcedir}/gcc/config/arm/
-%{sourcedir}/contrib/download_prerequisites
 
 
 ###############################################################################
@@ -54,14 +52,14 @@ cp -v %{S:1} %{sourcedir}/gcc/config/arm/
 ###############################################################################
 %build
 cd %{builddir}
+#%%global LD_LIB_PATHS "%{_prefix}/lib/gcc/arm-none-eabi/11.0.0:%{_prefix}/arm-none-eabi/lib"
+%global LD_LIB_PATHS ""
 %{sourcedir}/configure \
     --prefix=%{install_prefix} \
     --target=arm-none-eabi \
-    --enable-languages=c \
-    --enable-multilib \
-    --with-multilib-list=@armv7-a-profile \
-    --without-headers \
-    --disable-libssp
+    --with-lib-path=%{LD_LIB_PATHS} \
+    --disable-nls
+
 
 %make_build -j%{num_cpus}
 
@@ -75,12 +73,10 @@ rm -rf %{buildroot}
 %make_install
 
 
-
 ###############################################################################
 # Check
 ###############################################################################
 %check
-
 
 
 ###############################################################################
@@ -99,24 +95,12 @@ rm -rf %{sourcedir}
 %files
   %defattr(0777,-,users)
 
+  %{install_prefix}/arm-none-eabi
   %{install_prefix}/bin
-  %{install_prefix}/lib
-  %{install_prefix}/lib64
-  %{install_prefix}/libexec
 
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/crt*
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/lib*
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/thumb/crt*
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/thumb/lib*
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/include-fixed
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/install-tools
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/plugin
-  %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/install-tools
-  %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/liblto_plugin*
-  %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/plugin
-  %exclude %{install_prefix}/share
-
-  # %ghost %{install_prefix}/armv7-a-profile
+  %exclude %doc %{install_prefix}/share
+  %exclude %{install_prefix}/arm-none-eabi/lib
+  %exclude %{install_prefix}/src
 
 
 ###############################################################################
