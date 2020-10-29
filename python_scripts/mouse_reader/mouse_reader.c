@@ -34,12 +34,19 @@ int main(int argc, char *argv[]) {
             perror("Failed to read from device file");
             exit(EXIT_FAILURE);
         }
+        printf("Read (%3d bytes):", read_num);
+        for (int i = 0; i < 24/4; ++i) {
+            printf(" %08x", *(uint32_t *)(event_buffer + i*4));
+        }
+        printf("\n");
 
         int write_num = fwrite(&event_buffer, 1, event_size, fifo);
         if (write_num == -1) {
             perror("Failed to write to fifo");
             exit(EXIT_FAILURE);
         }
+
+        fflush(fifo);
     }
 
     return 0;
