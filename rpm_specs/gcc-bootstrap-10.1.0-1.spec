@@ -92,8 +92,8 @@ rm -rf %{buildroot}
 ###############################################################################
 %clean
 cd %{_builddir}
-%{!?keep_buildroot: rm -rf %{buildroot}}
-rm -rf %{builddir}
+# %{!?keep_buildroot: rm -rf %{buildroot}}
+# rm -rf %{builddir}
 rm -rf %{sourcedir}
 
 

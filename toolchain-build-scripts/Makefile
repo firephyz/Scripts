@@ -7,21 +7,21 @@
 # Defines
 ###############################################################################
 arch               := x86_64
-os_version         := fc30
+os_version         := fc32
 rpm-release-suffix := $(os_version).$(arch)
 packages           := newlib-3.2.0-1 \
                       gcc-bootstrap-10.1.0-1 \
 											binutils-2.34-1
 
 # package dep lists for each package
-newlib-3.2.0-requires-list         := gcc-bootstrap-10.1.0-1 binutils-2.34-1
-gcc-bootstrap-10.1.0-requires-list := binutils-2.34-1
-binutils-2.34-requires-list        :=
+newlib-3.2.0-1-requires-list         := gcc-bootstrap-10.1.0-1 binutils-2.34-1
+gcc-bootstrap-10.1.0-1-requires-list := binutils-2.34-1
+binutils-2.34-1-requires-list        :=
 
-rpm-db-dir	  := ./rpmdb
-build-root	  := ./BUILDROOT
+rpm-db-dir	    := ./rpmdb
+build-root	    := ./BUILDROOT
 rpm-dir		    := ./RPMS/x86_64
-srpm-dir	  	:= ./SRPMS
+srpm-dir	    := ./SRPMS
 build-dir	    := ./BUILD
 
 # select correct db to update when installing packages
@@ -45,6 +45,10 @@ endef
 # get package full rpm name from package short name without version numbers
 define short-name-to-rpm-path
 	$(call rpm-path,$(shell echo $(packages) | tr ' ' '\n' | grep $(1)))
+endef
+# get package short name from package name
+define pkg-name-to-short-name
+    $(shell echo $(1) | sed -r "s/([-\.][0-9]+)+//")
 endef
 # turn make target pkg stem into pkg-name
 define stem-to-pkg-name
@@ -95,21 +99,17 @@ build: $(rpm-targets);
 ###############################################################################
 # Register <pkg>-requires target and spec files in dep list
 define package-prereqs
-	$(addsuffix -requires,$(1)) \
-	$(call spec-path,$(1))
+	$(call spec-path,$(1)) |\
+	$(addsuffix -requires,$(1))
 endef
 
 .SECONDEXPANSION:
 RPMS/x86_64/%.rpm: $$(call package-prereqs,$$(call stem-to-pkg-name,$$*))
-	@stat $(call rpm-path,$(call stem-to-pkg-name,$*)) > /dev/null 2>&1; \
-	ret=$$?; \
-	if [[ "$${ret}" == "1" ]]; then					 \
-		echo Building $(call stem-to-pkg-name,$*)...; \
-		rpmbuild --define="install_prefix $(shell readlink -f $(build-root))" \
-				 --define="num_cpus $(JFLAG)" --dbpath=$(shell readlink -f $(rpm-db-dir)) \
-				 $(rpm-build-debuginfo) $(rpm-build-clean-after) \
-				 -bb $(call spec-path,$(call stem-to-pkg-name,$*)); \
-	fi
+	@echo Building $(call stem-to-pkg-name,$*)...;
+	@rpmbuild --define="install_prefix $(shell readlink -f $(build-root))" \
+			 --define="num_cpus $(JFLAG)" --dbpath=$(shell readlink -f $(rpm-db-dir)) \
+			 $(rpm-build-debuginfo) $(rpm-build-clean-after) \
+			 -bb $(call spec-path,$(call stem-to-pkg-name,$*));
 
 ###############################################################################
 # Manage dependencies between packages
@@ -142,19 +142,23 @@ RPMS/x86_64/%-install: $$(call rpm-path,$$(call pkg-name,$$*))
 # .SECONDEXPANSION:
 %-install: $$(addsuffix -install,$$(call short-name-to-rpm-path,$$*)) ;
 
+.PHONY: uninstall
+uninstall: $$(foreach pkg,$$(packages),$$(addsuffix -uninstall,$$(call pkg-name-to-short-name,$$(pkg)))) ;
 
-uninstall:
-	@echo Uninstalling packages from rpm database...
-	@for pack in $(packages); do \
-		$(rpml) -ve $$pack || :;	 \
-	done
-	@echo -e Done'\n'
+%-uninstall:
+	@ $(rpml) -qa | grep $(call pkg-name,$*);   \
+	ret=$$?; \
+	if [[ "$${ret}" == "1" ]]; then \
+		echo Package $* does not exist; \
+	else \
+		$(rpml) -ve $*; \
+	fi
 
 ###############################################################################
 # Cleanup
 ###############################################################################
 .PHONY: clean
-clean: clean_build_dir clean_rpms ;
+clean: clean_build_dir ;
 
 .PHONY: clean_rpms
 clean_rpms:
@@ -170,4 +174,4 @@ clean_build_dir:
 	@echo -e Done'\n'
 
 .PHONY: distclean
-distclean: clean uninstall
+distclean: clean clean_rpms uninstall

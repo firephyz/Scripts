@@ -48,8 +48,8 @@ cd %{_sourcedir}
 $([[ "%sha512_status" -eq  "1" ]] && exit 1 || :)
 
 cd %{_builddir}
-cat %{sourcedir}/configure.ac | sed 's/AC_PREREQ(2\.64)/AC_PREREQ(2\.69)/'
 %setup -q
+sed -i 's/AC_PREREQ(2\.64)/AC_PREREQ(2\.69)/' %{sourcedir}/configure.ac
 mkdir -p %{builddir}
 
 
@@ -74,6 +74,7 @@ CONFIGURE_FLAGS=$(echo $REG_FINI $ATEXIT_DYN_ALLOC $GLOBAL_STDIO $GLOBAL_ATEXIT 
   $OPT_SPACE $NO_SYSCALLS)
 
 
+PATH=%{install_prefix}/bin:$(echo $PATH)
 %{sourcedir}/configure \
     --prefix=%{install_prefix} \
     --target=arm-none-eabi \
