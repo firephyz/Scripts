@@ -11,18 +11,18 @@ os_version         := fc32
 rpm-release-suffix := $(os_version).$(arch)
 packages           := newlib-3.2.0-1 \
                       gcc-bootstrap-10.1.0-1 \
-											binutils-2.34-1
+                      binutils-2.34-1
 
 # package dep lists for each package
 newlib-3.2.0-1-requires-list         := gcc-bootstrap-10.1.0-1 binutils-2.34-1
 gcc-bootstrap-10.1.0-1-requires-list := binutils-2.34-1
 binutils-2.34-1-requires-list        :=
 
-rpm-db-dir	    := ./rpmdb
-build-root	    := ./BUILDROOT
-rpm-dir		    := ./RPMS/x86_64
-srpm-dir	    := ./SRPMS
-build-dir	    := ./BUILD
+rpm-db-dir	    := rpmdb
+build-root	    := BUILDROOT
+rpm-dir		    := RPMS/x86_64
+srpm-dir	    := SRPMS
+build-dir	    := BUILD
 
 # select correct db to update when installing packages
 rpml			:= rpm --dbpath=$(shell readlink -f $(rpm-db-dir))
@@ -99,17 +99,30 @@ build: $(rpm-targets);
 ###############################################################################
 # Register <pkg>-requires target and spec files in dep list
 define package-prereqs
-	$(call spec-path,$(1)) |\
-	$(addsuffix -requires,$(1))
+	$(call spec-path,$(1)) \
+	| $(addsuffix -requires,$(1))
 endef
 
 .SECONDEXPANSION:
-RPMS/x86_64/%.rpm: $$(call package-prereqs,$$(call stem-to-pkg-name,$$*))
+BUILDROOT/%: $$(call package-prereqs,$$(call stem-to-pkg-name,$$*));
+
+RPMS/x86_64/%.rpm: $(build-root)/$$*
+	$(rpml) -qa | grep binutils-2.34-1;   \
+	ret=$$?; \
+	if [[ "$${ret}" == "1" ]]; then \
+	    echo not here; \
+	else \
+	    echo here; \
+	fi
 	@echo Building $(call stem-to-pkg-name,$*)...;
+	@rm -rf $(rpm-db-dir)/$(call stem-to-pkg-name,$*)
 	@rpmbuild --define="install_prefix $(shell readlink -f $(build-root))" \
 			 --define="num_cpus $(JFLAG)" --dbpath=$(shell readlink -f $(rpm-db-dir)) \
 			 $(rpm-build-debuginfo) $(rpm-build-clean-after) \
 			 -bb $(call spec-path,$(call stem-to-pkg-name,$*));
+
+%: $$(call short-name-to-rpm-path,$$*);
+
 
 ###############################################################################
 # Manage dependencies between packages
@@ -134,8 +147,15 @@ RPMS/x86_64/%-install: $$(call rpm-path,$$(call pkg-name,$$*))
 	$(rpml) -qa | grep $(call pkg-name,$*);   \
 	ret=$$?; \
 	if [[ "$${ret}" == "1" ]]; then		 \
-		echo -e ' No\n'Installing...;\
-		$(rpml) --install $(addprefix $(rpm-dir)/,$*); \
+		echo -e ' No\n'Installing $(addprefix $(rpm-dir)/,$*)...;\
+		$(rpml) -v --install $(addprefix $(rpm-dir)/,$*); \
+		$(rpml) -qa | grep binutils-2.34-1;   \
+		ret=$$?; \
+		if [[ "$${ret}" == "1" ]]; then \
+		    echo not here; \
+		else \
+		    echo here; \
+		fi; \
 	fi
 
 # install targets for package short names (without version numbers)

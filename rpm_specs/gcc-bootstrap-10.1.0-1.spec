@@ -75,7 +75,7 @@ cd %{builddir}
 ###############################################################################
 %install
 cd %{builddir}
-rm -rf %{buildroot}
+#rm -rf %{buildroot}
 %make_install
 
 
@@ -103,20 +103,18 @@ rm -rf %{sourcedir}
 %files
   %defattr(0777,-,users)
 
-  %{install_prefix}/bin
+  %{install_prefix}/binlib/gcc/arm-none-eabi/10.1.0/plugin
   %{install_prefix}/lib
   %{install_prefix}/lib64
   %{install_prefix}/libexec
+  %{install_prefix}/include
+  %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/include
+  #%{install_prefix}/lib/gcc/arm-none-eabi/10.1.0/plugin
 
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/crt*
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/lib*
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/thumb/crt*
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/thumb/lib*
   %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/include-fixed
   %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/install-tools
   %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/plugin
   %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/install-tools
-  %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/liblto_plugin*
   %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/plugin
   %exclude %{install_prefix}/share
 
