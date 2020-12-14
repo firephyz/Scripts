@@ -1,0 +1,169 @@
+/dts-v1/;
+
+// GPMC external 0x0 - 0x1FFF_FFFF 512 MB
+// rom 0x4000_0000 - 0x4001_FFFF secure 128KB
+// rom 0x4002_0000 - 0x4003_BFFF public 64KB - 16KB
+// sram internal 0x402F_0000 - 0x402F_03FF reserved 1KB
+// sram internal 0x402F_0400 - 0x402F_FFFF reserved 64KB - 1KB
+// ocmc 0x4030_0000 - 0x4030_FFFF 64KB
+// emif0 sdram 0x8000_0000 - 0xBFFF_FFFF 1GB
+
+        /* reg = <0x00000000 0x20000000>, // gpmc
+              <0x40000000 0x00020000>, // rom
+              <0x40020000 (0x10000 - 0x4000)>,
+              <0x402F0000 0x400>,
+              <0x402F0400 (0x10000 - 0x400)>,
+              <0x40300000 0x10000>,
+              <0x80000000 0x40000000>; */
+
+///memreserve/ 0x80000000 0x1000;
+
+/ {
+    model = "ti,beaglebone-black";
+    compatible = "ti,beaglebone-black";
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    soc {
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        cpus {
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            cortexa8@0 {
+                status = "okay";
+                enable-method = "ti,am335x";
+                reg = <0>;
+                clock-frequency = <100000000>;
+            };
+        };
+
+        memory@0 {
+            reg = <0x00000000 0x20000000>,         // gpmc
+                  <0x40000000 (0x30000 - 0x4000)>, // rom
+                  <0x402F0000 0x10000>,            // internal sram
+                  <0x40300000 0x10000>,            // ocm
+                  <0x80000000 0x40000000>;         // emif
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            gpmc@0 {
+                status = "disabled";
+                reg = <0x0 0x20000000>;
+                #address-cells = <1>;
+                #size-cells = <1>;
+            };
+
+            rom@40000000 {
+                reg = <0x0 0x20000>,
+                      <0x20000 (0x10000 - 0x4000)>;
+                #address-cells = <1>;
+                #size-cells = <1>;
+
+                public@20000 {
+                    reg = <0x0 (0x10000 - 0x4000)>;
+                    #address-cells = <1>;
+                    #size-cells = <1>;
+                };
+            };
+
+            sram@402F0000 {
+                reg = <0x0 0x400>,
+                      <0x400 (0x10000 - 0x400)>;
+                #address-cells = <1>;
+                #size-cells = <1>;
+
+                public@400 {
+                    reg = <0x0 (0x10000 - 0x400)>;
+                    #address-cells = <1>;
+                    #size-cells = <1>;
+                };
+            };
+
+            ocm@40300000 {
+                reg = <0x0 0x10000>;
+                #address-cells = <1>;
+                #size-cells = <1>;
+            };
+
+            emif@80000000 {
+                reg = <0x0 0x40000000>;
+                #address-cells = <1>;
+                #size-cells = <1>;
+            };
+        };
+
+        uart@44E09000 {
+            compatible = "ns16550";
+            //clock-frequency = <115200>;
+            current-speed = <115200>;
+            reg = <0x0 0x1000>;
+            #address-cells = <1>;
+            #size-cells = <1>;
+        };
+    };
+
+    chosen {
+        bootargs = "";
+        stdout-path = "/soc/uart@44E09000";
+        stdin-path = "/soc/uart@44E09000";
+    };
+
+    /* cpus {
+        cpu0 {};
+    };
+
+    memory@0 {
+        reg = <0x00000000 0x20000000>,         // gpmc
+              <0x40000000 (0x30000 - 0x4000)>, // rom
+              <0x402F0000 0x10000>,            // internal sram
+              <0x40300000 0x10000>,            // ocm
+              <0x80000000 0x40000000>;         // emif
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        rom@40000000 {
+            ranges = <0x0 0x40000000 (0x30000 - 0x4000)>;
+            reg = <0x0 0x20000>,
+                  <0x20000 (0x10000 - 0x4000)>;
+            #address-cells = <1>;
+        };
+
+        sram@402F0000 {
+            ranges = <0x0 0x402F0000 0x10000>;
+            reg = <0x0 0x400>,
+                  <0x400 (0x10000 - 0x400)>;
+            #address-cells = <1>;
+        };
+
+        ocm@40300000 {
+            ranges = <0x0 0x40300000 0x10000>;
+            reg = <0x0 0x10000>;
+            #address-cells = <1>;
+        };
+    };
+
+    soc {
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        memory {
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            gpmc@0 {
+                status = "disabled";
+                ranges = <0x0 0x0 0x20000000>;
+                #address-cells = <1>;
+            };
+
+            emif@80000000 {
+                ranges = <0x0 0x80000000 0x40000000>;
+                reg = <0x0 0x40000000>;
+                #address-cells = <1>;
+            };
+        }
+    } */
+};
