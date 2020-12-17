@@ -1,20 +1,19 @@
 ###############################################################################
 # GNU GCC bootstrapping compiler for arm-none-eabi targets.
 ###############################################################################
-Name:           gcc-bootstrap
+Name:           mpc
 Version:        10.1.0
 Release:        1%{?dist}
 Summary:        GNU GCC
 License:        FIXME
 BuildArch:      x86_64
 AutoReq:        no
-BuildRequires:  mpc == 10.1.0, mpfr == 10.1.0, gmp == 10.1.0
-Requires:       mpc == 10.1.0, mpfr == 10.1.0, gmp == 10.1.0
+BuildRequires:  mpfr == 10.1.0, gmp == 10.1.0
+Requires:       mpfr == 10.1.0, gmp == 10.1.0
 
 %undefine       _disable_source_fetch
 Source0:        https://ftp.gnu.org/gnu/gcc/gcc-%{version}/gcc-%{version}.tar.xz
 Source1:        https://ftp.gnu.org/gnu/gcc/gcc-%{version}/gcc-%{version}.tar.xz.sig
-Source2:        armv7-a-profile
 Nosource:       0
 Nosource:       1
 
@@ -29,7 +28,7 @@ Nosource:       1
 %define _debugsource_packages 0
 
 %global sourcedir %{_builddir}/gcc-%{version}
-%global builddir %{_builddir}/gcc-%{version}-build
+%global builddir %{_builddir}/%{name}-%{version}-build
 %global install_prefix %{?install_prefix}%{!?install_prefix: %{_prefix}}
 %global num_cpus %{?num_cpus}%{!?num_cpus: %{_smp_mflags}}
 
@@ -38,7 +37,7 @@ Nosource:       1
 # Description
 ###############################################################################
 %description
-  Packaged bootstrap gcc.
+  Packaged gcc prerequisite mpc.
 
 
 ###############################################################################
@@ -49,8 +48,7 @@ gpg --keyring %{gnu_keyring} --verify %{_sourcedir}/gcc-%{version}.tar.xz.sig
 
 %setup -q -n gcc-%{version}
 mkdir -p %{builddir}
-cp -v %{S:2} %{sourcedir}/gcc/config/arm/
-#%{sourcedir}/contrib/download_prerequisites
+%{sourcedir}/contrib/download_prerequisites
 
 
 ###############################################################################
@@ -58,23 +56,39 @@ cp -v %{S:2} %{sourcedir}/gcc/config/arm/
 ###############################################################################
 %build
 cd %{builddir}
-%{sourcedir}/configure \
+
+%{sourcedir}/mpc/configure \
+    --srcdir=%{sourcedir}/mpc \
+    --cache-file=./config.cache \
     --prefix=%{install_prefix} \
-    --target=arm-none-eabi \
-    --enable-languages=c \
     --enable-multilib \
     --without-headers \
     --disable-libssp \
     --with-multilib-list=@armv7-a-profile \
+    --enable-languages=c,lto \
+    '--program-transform-name=s&^&arm-none-eabi-&' \
+    --disable-option-checking \
+    --build=x86_64-pc-linux-gnu \
+    --host=x86_64-pc-linux-gnu \
+    --target=arm-none-eabi \
+    --disable-shared \
     --with-gmp-include=%{install_prefix}/include \
     --with-gmp-lib=%{install_prefix}/lib \
-    --with-mpc-include=%{install_prefix}/include \
-    --with-mpc-lib=%{install_prefix}/lib \
     --with-mpfr-include=%{install_prefix}/include \
-    --with-mpfr-lib=%{install_prefix}/lib
+    --with-mpfr-lib=%{install_prefix}/lib \
+    --disable-maintainer-mode
 
-#%make_build -j%{num_cpus}
-make -j%{num_cpus} all-gcc
+
+# %{sourcedir}/configure \
+#     --prefix=%{install_prefix} \
+#     --target=arm-none-eabi \
+#     --enable-languages=c \
+#     --enable-multilib \
+#     --without-headers \
+#     --disable-libssp \
+#     --with-multilib-list=@armv7-a-profile
+
+%make_build -j%{num_cpus}
 
 
 ###############################################################################
@@ -82,9 +96,7 @@ make -j%{num_cpus} all-gcc
 ###############################################################################
 %install
 cd %{builddir}
-#rm -rf %{buildroot}
-# %make_install
-DESTDIR=%{buildroot} && make install-strip-gcc
+%make_install
 
 
 
@@ -100,9 +112,6 @@ DESTDIR=%{buildroot} && make install-strip-gcc
 ###############################################################################
 %clean
 cd %{_builddir}
-# %{!?keep_buildroot: rm -rf %{buildroot}}
-# rm -rf %{builddir}
-#rm -rf %{sourcedir}
 
 
 ###############################################################################
@@ -111,22 +120,10 @@ cd %{_builddir}
 %files
   %defattr(0777,-,users)
 
-  %{install_prefix}/bin
   %{install_prefix}/lib
-  # %{install_prefix}/lib64
-  %{install_prefix}/libexec
-  # %{install_prefix}/include
-  # #%{install_prefix}/lib/gcc/arm-none-eabi/%{version}/include
-  # #%{install_prefix}/lib/gcc/arm-none-eabi/10.1.0/plugin
-  #
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/include-fixed
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/install-tools
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/plugin
-  %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/install-tools
-  %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/plugin
-  %exclude %{install_prefix}/share
+  %{install_prefix}/include
 
-  # %ghost %{install_prefix}/armv7-a-profile
+  %exclude %{install_prefix}/share
 
 
 ###############################################################################

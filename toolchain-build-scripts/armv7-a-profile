@@ -32,8 +32,8 @@ MULTILIB_REUSE	     =
 ###############################################################################
 # Options
 ###############################################################################
-MULTILIB_OPTIONS      += marm/mthumb
-MULTILIB_DIRNAMES     += arm thumb
+MULTILIB_OPTIONS      += marm
+MULTILIB_DIRNAMES     += arm
 
 MULTILIB_OPTIONS	    += march=armv7-a/march=armv7-a+fp/march=armv7-a+simd
 MULTILIB_DIRNAMES	    += v7-a v7-a+fp v7-a+simd

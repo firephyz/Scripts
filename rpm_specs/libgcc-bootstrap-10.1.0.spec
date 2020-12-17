@@ -1,15 +1,14 @@
 ###############################################################################
 # GNU GCC bootstrapping compiler for arm-none-eabi targets.
 ###############################################################################
-Name:           gcc-bootstrap
+Name:           libgcc-bootstrap
 Version:        10.1.0
 Release:        1%{?dist}
 Summary:        GNU GCC
 License:        FIXME
 BuildArch:      x86_64
 AutoReq:        no
-BuildRequires:  mpc == 10.1.0, mpfr == 10.1.0, gmp == 10.1.0
-Requires:       mpc == 10.1.0, mpfr == 10.1.0, gmp == 10.1.0
+BuildRequires:  gcc-bootstrap == 10.1.0, binutils == 2.34
 
 %undefine       _disable_source_fetch
 Source0:        https://ftp.gnu.org/gnu/gcc/gcc-%{version}/gcc-%{version}.tar.xz
@@ -58,6 +57,7 @@ cp -v %{S:2} %{sourcedir}/gcc/config/arm/
 ###############################################################################
 %build
 cd %{builddir}
+export PATH=%{install_prefix}/bin:$PATH
 %{sourcedir}/configure \
     --prefix=%{install_prefix} \
     --target=arm-none-eabi \
@@ -74,7 +74,9 @@ cd %{builddir}
     --with-mpfr-lib=%{install_prefix}/lib
 
 #%make_build -j%{num_cpus}
-make -j%{num_cpus} all-gcc
+sed -i 's/configure-target-libgcc: maybe-all-gcc/configure-target-libgcc:/' %{builddir}/Makefile
+export PATH=%{install_prefix}/bin:$PATH
+make -j%{num_cpus} all-target-libgcc
 
 
 ###############################################################################
@@ -84,7 +86,7 @@ make -j%{num_cpus} all-gcc
 cd %{builddir}
 #rm -rf %{buildroot}
 # %make_install
-DESTDIR=%{buildroot} && make install-strip-gcc
+DESTDIR=%{buildroot} && make install-strip-target-libgcc
 
 
 
@@ -102,7 +104,7 @@ DESTDIR=%{buildroot} && make install-strip-gcc
 cd %{_builddir}
 # %{!?keep_buildroot: rm -rf %{buildroot}}
 # rm -rf %{builddir}
-#rm -rf %{sourcedir}
+rm -rf %{sourcedir}
 
 
 ###############################################################################
@@ -111,22 +113,22 @@ cd %{_builddir}
 %files
   %defattr(0777,-,users)
 
-  %{install_prefix}/bin
-  %{install_prefix}/lib
+  # %{install_prefix}/bin
+  # %{install_prefix}/lib
   # %{install_prefix}/lib64
-  %{install_prefix}/libexec
+  # %{install_prefix}/libexec
   # %{install_prefix}/include
   # #%{install_prefix}/lib/gcc/arm-none-eabi/%{version}/include
   # #%{install_prefix}/lib/gcc/arm-none-eabi/10.1.0/plugin
   #
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/include-fixed
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/install-tools
-  %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/plugin
-  %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/install-tools
-  %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/plugin
-  %exclude %{install_prefix}/share
-
-  # %ghost %{install_prefix}/armv7-a-profile
+  # %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/include-fixed
+  # %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/install-tools
+  # %exclude %{install_prefix}/lib/gcc/arm-none-eabi/%{version}/plugin
+  # %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/install-tools
+  # %exclude %{install_prefix}/libexec/gcc/arm-none-eabi/%{version}/plugin
+  # %exclude %{install_prefix}/share
+  #
+  # # %ghost %{install_prefix}/armv7-a-profile
 
 
 ###############################################################################
