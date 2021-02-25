@@ -103,9 +103,6 @@ def cleanup(vars):
 
 # preimport often used modules
 import os, sys
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
     main()
