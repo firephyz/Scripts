@@ -1,6 +1,17 @@
 ###############################################################################
 # GNU Binutils for arm-none-eabi targets.
 ###############################################################################
+%{!?skip_download:%undefine _disable_source_fetch}
+%define _unpackaged_files_terminate_build 1
+%define _debugsource_packages 0
+# separate, compat, so binaries are shipped with build-ids
+%define _build_id_links none
+%define _color_output auto
+
+
+###############################################################################
+# Package
+###############################################################################
 Name:           binutils
 Version:        2.34
 Release:        1%{?dist}
@@ -9,7 +20,6 @@ License:        FIXME
 BuildArch:      x86_64
 AutoReq:        no
 
-%undefine       _disable_source_fetch
 Source0:        https://ftp.gnu.org/gnu/binutils/%{name}-%{version}.tar.xz
 Source1:        https://ftp.gnu.org/gnu/binutils/%{name}-%{version}.tar.xz.sig
 Nosource:       0
@@ -19,16 +29,11 @@ Nosource:       1
 ###############################################################################
 # Defines
 ###############################################################################
-%define _unpackaged_files_terminate_build 1
-# separate, compat, so binaries are shipped with build-ids
-%define _build_id_links none
-# so source and debug are combined
-%define _debugsource_packages 0
-
-%global sourcedir %{_builddir}/%{name}-%{version}
-%global builddir %{_builddir}/%{name}-%{version}-build
-%global install_prefix %{?install_prefix}%{!?install_prefix: %{_prefix}}
-%global num_cpus %{?num_cpus}%{!?num_cpus: %{_smp_mflags}}
+%global package_extract_dir_name gcc-%{version}
+%global package_extract_dir %{_builddir}/%{package_extract_dir_name}
+%global package_build_dir %{package_extract_dir}-build
+%global package_install_prefix %{_buildrootdir}/tools
+%global package_sysroot %{_buildrootdir}
 
 
 ###############################################################################
@@ -39,38 +44,47 @@ Nosource:       1
 
 
 ###############################################################################
-# Prep
+# Download source if necessary. Prep.
 ###############################################################################
 %prep
-gpg --keyring %{gnu_keyring} --verify %{_sourcedir}/%{name}-%{version}.tar.xz.sig
-%setup -q
-mkdir -p %{builddir}
+rm -rf %{package_build_dir}
+mkdir -p %{package_build_dir}
+mkdir -p %{package_build_dir}/rpmlogs
 
 
 ###############################################################################
-# Build
+# Check source signature, unpack and move into source directory.
+###############################################################################
+# #gpg --keyring ~/.gnupg/gnu-keyring.gpg --verify %{_sourcedir}/%{name}-%{version}.tar.xz.sig
+if [[ ! -e %{package_extract_dir} ]]; then
+%setup -q -n %{package_extract_dir_name}
+fi
+
+
+###############################################################################
+# Start build phase. Setup build dir, configure and build
 ###############################################################################
 %build
-cd %{builddir}
-#%%global LD_LIB_PATHS "%{_prefix}/lib/gcc/arm-none-eabi/11.0.0:%{_prefix}/arm-none-eabi/lib"
-%global LD_LIB_PATHS ""
-%{sourcedir}/configure \
-    --prefix=%{install_prefix} \
+
+cd %{package_build_dir}
+%{package_extract_dir}/configure \
+    --prefix=%{package_install_prefix}\
     --target=arm-none-eabi \
-    --with-lib-path=%{LD_LIB_PATHS} \
-    --disable-nls
+    #--with-lib-path=%{LD_LIB_PATHS} \
+    --disable-nls 2>&1 | tee %{package_build_dir}/rpmlogs/configure.log > /dev/null
 
-
-%make_build -j%{num_cpus}
+make %{_smp_mflags} 2>&1 | tee %{package_build_dir}/rpmlogs/make.log > /dev/null
 
 
 ###############################################################################
-# Install
+# Start install phase, change to build dir and install files
 ###############################################################################
 %install
-cd %{builddir}
-rm -rf %{buildroot}
-%make_install
+
+cd %{package_build_dir}
+DESTDIR=%{buildroot} \
+INSTALL="/usr/bin/install -p" \
+make install | tee %{package_build_dir}/rpmlogs/install.log > /dev/null
 
 
 ###############################################################################
@@ -83,10 +97,6 @@ rm -rf %{buildroot}
 # Clean
 ###############################################################################
 %clean
-cd %{_builddir}
-%{!?keep_buildroot: rm -rf %{buildroot}}
-rm -rf %{builddir}
-rm -rf %{sourcedir}
 
 
 ###############################################################################
@@ -95,12 +105,12 @@ rm -rf %{sourcedir}
 %files
   %defattr(0777,-,users)
 
-  %{install_prefix}/arm-none-eabi
-  %{install_prefix}/bin
+  %{package_install_prefix}/arm-none-eabi
+  %{package_install_prefix}/bin
 
-  %exclude %doc %{install_prefix}/share
-  %exclude %{install_prefix}/arm-none-eabi/lib
-  %exclude %{install_prefix}/src
+  %exclude %{package_install_prefix}/share
+  %exclude %{package_install_prefix}/arm-none-eabi/lib
+  %exclude %{package_install_prefix}/src
 
 
 ###############################################################################
