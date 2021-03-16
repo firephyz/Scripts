@@ -1,17 +1,25 @@
 (require 'package)
-(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
-(package-initialize)
-(package-refresh-contents)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Create a wrapper around package-install so we don't initialize
+;; and refresh melpa before we need it, every time we start up...
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(fset 'my-package-install (symbol-function 'package-install))
+(setq did-setup-package-install nil)
+(defun package-install (pkg &optional DONT-SELECT)
+  (if (not did-setup-package-install)	
+      (progn (setq did-setup-package-install 't)
+	     (add-to-list 'package-archives
+			  '("melpa" . "https://melpa.org/packages/") t)
+	     (package-initialize)
+	     (package-refresh-contents)))
+  (my-package-install pkg DONT-SELECT))
 
 
 (defvar g-nlines 2)
 (defvar g-fwidth 3)
 (defvar g-lfmt "hi")
 (defvar testvar 15)
-
-
-;; Set the font
-(set-frame-font "-misc-fixed-medium-r-normal--20-*-75-75-c-100-iso8859-14" 't 't)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -43,6 +51,13 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                            Mode Hooks                                 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun custom-makefile-mode-hook ()
+  (setq indent-line-function 'indent-relative-first-indent-point))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                           Custom Variables                                 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
  ;; custom-set-variables, custom-set-faces was added by Custom.
@@ -58,13 +73,17 @@
    '(("\\`/[^/]*:\\([^/]*/\\)*\\([^/]*\\)\\'" "/home/kyle/.emacs.d/auto-save-list/\\2" t)))
  '(backup-directory-alist '(("." . "/home/kyle/.emacs.d/backup-dir")))
  '(c-mode-hook '((lambda nil (linum-mode 't))))
+ '(makefile-mode-hook '(custom-makefile-mode-hook))
  '(column-number-mode t)
  '(completion-auto-help 'lazy)
  '(custom-enabled-themes '(deeper-blue))
  '(emacs-lisp-mode-hook '((lambda nil (linum-mode 't))))
  '(enable-recursive-minibuffers t)
  '(linum-format linum-format-custom-hook)
- '(package-selected-packages '(nav rust-mode))
+ '(enable-recursive-minibuffers t)
+ '(package-selected-packages
+   '(nav rust-mode))
+ '(prog-mode-hook '(toggle-truncate-lines))
  '(rust-indent-offset 2)
  '(show-paren-mode t))
 
@@ -78,6 +97,26 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(linum ((t (:inherit (shadow default) :background "#404040" :foreground "#a0a0a0")))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                           Font and Visuals                                 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Set the font
+;;(set-frame-font "-misc-fixed-medium-r-normal--20-*-75-75-c-100-iso8859-14" 't 't)
+;;(set-frame-font "-misc-fixed-medium-r-normal--12-*-75-75-c-70-iso8859-1" 't 't)
+(set-frame-font "-1ASC-Liberation Mono-normal-normal-normal-*-*-*-*-*-m-0-iso10646-1" 't 't)
+(set-face-attribute 'default nil :height 85)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                           Keybindings                                 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Change how the buffer menu appears (open in the same window)
+(global-set-key "\C-x\C-b" 'buffer-menu)
+
+;; Bind 'revert-buffer'
+(global-set-key "\C-x\C-r" 'revert-buffer)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
