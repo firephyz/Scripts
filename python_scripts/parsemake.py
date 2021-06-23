@@ -422,17 +422,17 @@ for make in makes:
 ##############################################################################
 # REPL Helper functions
 ##############################################################################
-def change_make_path(action, levels):
-    global make_path
+def change_make_path(action, levels=0):
+    global make_path, path_file
     if action == 'up':
         make_path = make_path[0:-levels]
     elif action == 'down':
         make_path += [levels]
+    elif action == 'update':
+        pass # Just saving
 
     # Save new path to file for later
-    pathfile = open('make.path', 'w+b')
-    pickle.dump(make_path, pathfile)
-    pathfile.close()
+    cmd_save('')
 
 def print_target_node(target_node):
     print(target_node.pretty_str())
@@ -442,6 +442,9 @@ def print_target_node(target_node):
     for ip, p in enumerate(target_node.parts):
         print(fmt_string.format(ip, p.get_identity_string()))
 
+def get_work_filename(filename):
+    global workdir
+    return '{}/{}'.format(workdir, filename)
 
 ##############################################################################
 # REPL Commands
@@ -453,7 +456,7 @@ def cmd_down(args):
     else:
         target = int(args)
         if target >= len(make_top.get_path(make_path).parts):
-            print('index too high')
+            print('child index too high ([0, {}])'.format(len(make_top.get_path(make_path).parts)))
             return
         change_make_path('down', target)
         cmd_print('')
@@ -463,19 +466,38 @@ def cmd_up(args):
     if len(args) == 0:
         levels = 1
     else:
-        levels = int(args[0])
+        levels = int(args)
     if levels > len(make_path):
-        print('too high')
+        print('too high ({} deep)'.format(len(make_path)))
         return
     change_make_path('up', levels)
     cmd_print('')
 
-def cmd_load_path(args):
-    global make_path
-    pathfile = open('make.path', 'rb')
+def cmd_load(args):
+    global make_path, workdir
+    if len(args) == 0:
+        path_files = list(filter(lambda file: re.match('.*?\.path$', file), os.listdir(workdir)))
+        for file in path_files:
+            print(' - {}'.format(file))
+        return
+    else:
+        path_filename = args
+    pathfile = open(get_work_filename(path_filename), 'rb')
     make_path = pickle.load(pathfile)
     pathfile.close()
     cmd_path('')
+    change_make_path('update')
+
+def cmd_save(args):
+    global make_path, path_file
+    # Display available path files if none is given
+    if len(args) == 0:
+        path_filename = path_file
+    else:
+        path_filename = '{}.path'.format(args)
+    pathfile = open(get_work_filename(path_filename), 'w+b')
+    pickle.dump(make_path, pathfile)
+    pathfile.close()
 
 def cmd_path(args):
     global make_path
@@ -486,30 +508,31 @@ def cmd_print(args):
     print_target_node(make_top.get_path(make_path))
 
 def cmd_dump(args):
-    global make_path
+    global make_path, dump_file
     if len(args) == 0:
-        filename = 'make.dump'
+        filename = dump_file
     else:
         filename = args[0]
+    filename = '{}/{}'.format(workdir, filename)
     print('writing to \'{}\''.format(filename))
     file = open(filename, 'w+')
     file.write(make_top.get_path(make_path).pretty_str())
     file.close()
 
 def cmd_less(args):
-    global make_path
+    global dump_file
     cmd_dump('')
-    os.system('less dump.txt')
+    os.system('less {}'.format(get_work_filename(dump_file)))
 
 def cmd_quit(args):
-    global make_path
     raise Exception('quit')
 
 cmd_actions = {'down': cmd_down,
                'up': cmd_up,
                'path': cmd_path,
                'print': cmd_print,
-               'load_path': cmd_load_path,
+               'load': cmd_load,
+               'save': cmd_save,
                'dump':cmd_dump,
                'less': cmd_less,
                'quit': cmd_quit}
@@ -518,9 +541,19 @@ cmd_actions = {'down': cmd_down,
 ##############################################################################
 # REPL
 ##############################################################################
+workdir = 'make.work'
+path_file = 'make.path'
+dump_file = 'make.dump'
 make_path = []
 last_cmd_line = ''
 
+# Setup working dir
+try:
+    os.stat(workdir)
+except FileNotFoundError:
+    os.mkdir(workdir)
+
+cmd_load('make.path')
 cmd_print('')
 while True:
     input_line = input(' > ')
