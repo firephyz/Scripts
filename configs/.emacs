@@ -1,9 +1,13 @@
 (require 'package)
+(require 'preview-rst)
+(require 'direx)
+(require 'rust-mode)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Create a wrapper around package-install so we don't initialize
 ;; and refresh melpa before we need it, every time we start up...
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; (defvar my-package-install nil)
 (fset 'my-package-install (symbol-function 'package-install))
 (setq did-setup-package-install nil)
 (defun package-install (pkg &optional DONT-SELECT)
@@ -15,11 +19,93 @@
 	     (package-refresh-contents)))
   (my-package-install pkg DONT-SELECT))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Make sure shell opens in the current window
+(let ((tmp-buf (get-buffer-create "*shell*")))
+  (shell tmp-buf)
+  (let ((kill-buffer-query-functions nil))
+    (kill-buffer tmp-buf)
+    (delete-window)))
+;; (load "buff-menu.el")
+(defvar shell-actual-func nil)
+(fset 'shell-actual-func (symbol-function 'shell))
+(defun shell (&optional buffer)
+  (interactive)
+  (let ((buffer (get-buffer-create "*shell*")))
+    (set-window-buffer (other-window 0) buffer)
+    (or comint-input-ring
+	(setq comint-input-ring (make-ring comint-input-ring-size)))
+    (ring-insert comint-input-ring "echo hi")
+    (shell-actual-func buffer)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Sort buffer menu by file path and name
+(load "buff-menu.el")
+(defvar shell-actual-buffer-menu nil)
+(fset 'shell-actual-buffer-menu (symbol-function 'buffer-menu))
+(defun buffer-menu (&optional ARG)
+  (interactive)
+  (shell-actual-buffer-menu)
+  (Buffer-menu-sort 6)
+  (Buffer-menu-sort 6)
+  (goto-char (point-min)))
+  ;; (beginning-of-buffer))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; View html and Rst files in browser.
+
+;; (setq view-docu-default-browser "chromium_browser")
+(setq view-docu-default-browser "vivaldi")
+
+(defun view-rst ()
+  (let ((filename buffer-file-name))
+    (let ((preview-file (format "%spreview-%s.html"
+				(let ((file-directory (file-name-directory filename)))
+				  (if (not file-directory) "" file-directory))
+				(file-name-sans-extension (file-name-nondirectory filename)))))
+      (shell-command (format "/usr/bin/rst2html %s > %s" filename preview-file))
+      (shell-command (format "%s file://%s &" view-docu-default-browser preview-file)))))
+
+(defun view-html ()
+  (shell-command (format "%s file://%s &" view-docu-default-browser buffer-file-name)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Insert GUIDs
+(defun insert-guid (&optional is-c-format)
+  (unless is-c-format (setq is-c-format nil))
+  (defun gen-guid ()
+    (let ((guid ""))
+      (dotimes (i 32)
+	(setq guid (format "%0X%s" (random 16) guid)))
+	;; (if (or (= i 11) (= i 15) (= i 19) (= i 23))
+	;;     (setq guid (format "-%s" guid))))
+      guid))
+  (let ((guid (gen-guid)))
+    (if is-c-format
+	(setq guid (format "{0x%s, 0x%s, 0x%s, {0x%s, 0x%s, 0x%s, 0x%s, 0x%s, 0x%s, 0x%s, 0x%s}}"
+			   (substring guid 0 8)
+			   (substring guid 8 12)
+			   (substring guid 12 16)
+			   (substring guid 16 18)
+			   (substring guid 18 20)
+			   (substring guid 20 22)
+			   (substring guid 22 24)
+			   (substring guid 24 26)
+			   (substring guid 26 28)
+			   (substring guid 28 30)
+			   (substring guid 30 32)))
+      (setq guid (format "%s-%s-%s-%s-%s"
+			 (substring guid 0 8)
+			 (substring guid 8 12)
+			 (substring guid 12 16)
+			 (substring guid 16 20)
+			 (substring guid 20 32))))
+    (insert guid)))
+
 
 (defvar g-nlines 2)
 (defvar g-fwidth 3)
 (defvar g-lfmt "hi")
-(defvar testvar 15)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -56,6 +142,8 @@
 (defun custom-makefile-mode-hook ()
   (setq indent-line-function 'indent-relative-first-indent-point))
 
+(add-to-list 'auto-mode-alist '("\\.\\(dsc\\|dec\\|fdf\\|inf\\)\\'" . toml-mode))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                           Custom Variables                                 
@@ -73,19 +161,55 @@
    '(("\\`/[^/]*:\\([^/]*/\\)*\\([^/]*\\)\\'" "/home/kyle/.emacs.d/auto-save-list/\\2" t)))
  '(backup-directory-alist '(("." . "/home/kyle/.emacs.d/backup-dir")))
  '(c-mode-hook '((lambda nil (linum-mode 't))))
- '(makefile-mode-hook '(custom-makefile-mode-hook))
  '(column-number-mode t)
  '(completion-auto-help 'lazy)
  '(custom-enabled-themes '(deeper-blue))
  '(emacs-lisp-mode-hook '((lambda nil (linum-mode 't))))
  '(enable-recursive-minibuffers t)
- '(linum-format linum-format-custom-hook)
- '(enable-recursive-minibuffers t)
- '(package-selected-packages
-   '(nav rust-mode))
+ '(inhibit-startup-screen t)
+ '(makefile-mode-hook '(custom-makefile-mode-hook))
+ '(package-selected-packages '("rust-mode" toml-mode yaml-mode ztree nav rust-mode))
  '(prog-mode-hook '(toggle-truncate-lines))
  '(rust-indent-offset 2)
- '(show-paren-mode t))
+ '(show-paren-mode t)
+ '(text-mode-hook '(text-mode-hook-identify toggle-truncate-lines))
+ '(toml-mode-hook #'toggle-truncate-lines)
+ '(verilog-auto-endcomments nil)
+ '(verilog-auto-lineup nil)
+ '(verilog-auto-newline nil)
+ '(verilog-case-indent 2)
+ '(verilog-cexp-indent 2)
+ '(verilog-indent-level 2)
+ '(verilog-indent-level-behavioral 2)
+ '(verilog-indent-level-declaration 2)
+ '(verilog-indent-level-directive 2)
+ '(verilog-indent-level-module 2)
+ '(window-min-width 3))
+
+
+;; Don't let emacs mistake this custom-set-variables as the one used
+;; in auto customization
+(progn (custom-set-variables
+	'(toml-mode-hook #'toggle-truncate-lines)
+	'(verilog-indent-level 2)
+	'(verilog-indent-level-module 2)
+	'(verilog-indent-level-declaration 2)
+	'(verilog-indent-level-behavioral 2)
+	'(verilog-indent-level-directive 2)
+	'(verilog-cexp-indent 2)
+	'(verilog-case-indent 2)
+	'(verilog-auto-lineup nil)
+	'(verilog-auto-endcomments nil)
+	'(verilog-auto-newline nil)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                           Workspace Related Defines                                 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defvar beagle-src "/home/kyle/o/BeagleProjects/")
+(defvar edk2-src (format "%sedk2/" beagle-src))
+
+(defvar local-workspace beagle-src)
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -118,18 +242,50 @@
 ;; Bind 'revert-buffer'
 (global-set-key "\C-x\C-r" 'revert-buffer)
 
+;; Convenciently switch between general and useful windows
+(global-set-key "\C-xm" (lambda () (interactive) (switch-to-buffer "*Messages*")))
+(global-set-key "\C-xs" (lambda () (interactive) (switch-to-buffer "*shell*")))
+(global-set-key "\C-xj" (lambda () (interactive) (switch-to-buffer "*scratch*")))
+
+;; Create a single peristent direx-buffer when invoked using the \C-xd shortcut
+(defvar direx-buffer nil)
+(defun get-direx-buffer ()
+  (interactive)
+  (if (buffer-live-p direx-buffer)
+      (switch-to-buffer direx-buffer)
+    (progn (setq direx-buffer nil)
+	   (direx:find-directory local-workspace)
+	   (setq direx-buffer (current-buffer)))))
+(global-set-key "\C-xd" 'get-direx-buffer)
+
+;; Kill the buffer-file-name of the current buffer into the kill ring to yank later
+(global-set-key "\C-xg" (lambda () (interactive)
+			  (if buffer-file-name
+			      (progn (kill-new buffer-file-name)
+				     (message (format "Stored buffer file path '%s'" buffer-file-name)))
+			    (message "Buffer has no name."))))
+
+(defvar direx-target-window nil)
+(global-set-key "\C-t" (lambda () (interactive)
+			 (setq direx-target-window (get-buffer-window (current-buffer)))
+			 (message (format "Set direx target window to %s"
+					  (buffer-name (window-buffer direx-target-window))))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                        Convenient Eval Functions                             
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Eval and print-print the last sexpr
 ;; KEY-BIND to C-q
-(defun pp-eval-at-point ()
+(defun  pp-eval-at-point ()
+  (interactive)
+  (eval-last-sexp t))
+(defun pp-eval-and-print ()
   (interactive)
   (insert "\n")
   (pp-eval-last-sexp t))
 (global-set-key (kbd "C-q") 'pp-eval-at-point)
-
+(global-set-key (kbd "C-S-q") 'pp-eval-and-print)
 
 ;;
 ;; ;; Re-evaluate last manual command executed in the minibuffer
@@ -156,8 +312,7 @@
 	      (progn (insert "\n  ...")
 		     (throw 'list-too-long nil)))
 	  (setq i (+ i 1)))))
-    (goto-line (+ curr-line 1))))
-
+    (forward-line)))
 
 ;;
 ;; Trying to set-up some custom help window handling...

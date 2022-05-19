@@ -2,7 +2,7 @@
 
 # 		-drive file=boot.img,format=raw \
 qemu-system-arm -machine virt \
-	        -cpu cortex-a7 \
+	        -cpu cortex-a8 \
 		-m size=1024 \
 		-kernel boot.img \
 		-s -S \

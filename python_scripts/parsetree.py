@@ -17,7 +17,7 @@ if len(sys.argv) < 2:
 logname = sys.argv[1]
 #logname = '/home/builder/rpmbuild/BUILD/gcc-10.1.0-build/arm-none-eabi/arm/v7-a/hard/libgcc/log.txt'
 #logname = '/home/builder/rpmbuild/log2.txt'
-logname = '/home/kyle/tmp'
+#logname = '/home/kyle/tmp'
 text = list(map(lambda line: line+'\n', re.split('\n', open(logname, 'r').read())[0:-1]))
 max_line_number_width = math.ceil(math.log10(len(text)+1))
 # tmp_logname = '/tmp/make.log'
@@ -51,7 +51,7 @@ makenodes = list(filter(lambda line: re.match('^make\[[0-9]+\].*', line[1]), enu
 
 # Convert into (<depth>, <line-number>, <data>) tuples
 #build_path = '/home/builder/rpmbuild/BUILD/newlib-build'
-build_path = '/home/builder/rpmbuild/BUILD/gcc-bootstrap-build'
+build_path = '/home/builder/rpmbuild/BUILD/gcc-build'
 make_node_re = re.compile('make\[([0-9]+)\]: ((Entering|Leaving)[^\']+\'{}(.*?)\'|(Nothing)[^\']+\'([^\']+)\'|.*? (Error))'.format(build_path))
 make_node_re_get_parser_key = lambda match: next(key for key in [match[i] for i in [2, 4, 6]] if len(key) != 0)
 make_node_re_parsers = {'Entering': lambda x: {'depth': int(x[0]), 'target': x[3]},
@@ -663,7 +663,7 @@ def cmd_dump(args):
 def cmd_less(args):
     global dump_file
     cmd_dump('')
-    os.system('less {}'.format(get_work_filename(dump_file)))
+    os.system('less -S {}'.format(get_work_filename(dump_file)))
 
 def cmd_quit(args):
     raise Exception('quit')
