@@ -1,5 +1,5 @@
 (require 'package)
-(require 'preview-rst)
+;; (require 'preview-rst)
 (require 'direx)
 (require 'rust-mode)
 
@@ -21,22 +21,28 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Make sure shell opens in the current window
-(let ((tmp-buf (get-buffer-create "*shell*")))
-  (shell tmp-buf)
-  (let ((kill-buffer-query-functions nil))
-    (kill-buffer tmp-buf)
-    (delete-window)))
+;; (let ((tmp-buf (get-buffer-create "*shell*")))
+;;   (shell tmp-buf)
+;;   (let ((kill-buffer-query-functions nil))
+;;     (kill-buffer tmp-buf)
+;;     (delete-window)))
 ;; (load "buff-menu.el")
-(defvar shell-actual-func nil)
-(fset 'shell-actual-func (symbol-function 'shell))
-(defun shell (&optional buffer)
-  (interactive)
-  (let ((buffer (get-buffer-create "*shell*")))
-    (set-window-buffer (other-window 0) buffer)
-    (or comint-input-ring
-	(setq comint-input-ring (make-ring comint-input-ring-size)))
-    (ring-insert comint-input-ring "echo hi")
-    (shell-actual-func buffer)))
+;; (defvar shell-actual-func (symbol-function 'shell))
+;; (defun shell (&optional buffer)
+;;   (interactive (list (and current-prefix-arg current-prefix-arg)))
+;;   (let ((buffer (get-buffer-create "*shell*")))
+;;     (set-window-buffer (other-window 0) buffer)
+;;     (or comint-input-ring
+;; 	(setq comint-input-ring (make-ring comint-input-ring-size)))
+;;     (ring-insert comint-input-ring "echo hi")
+;;     (debug)
+;;     (apply shell-actual-func nil)))
+
+(defvar old-make-comint-in-buffer (symbol-function 'make-comint-in-buffer))
+(defun make-comint-in-buffer (name buffer program &optional startfile &rest switches)
+  (apply old-make-comint-in-buffer name buffer program startfile '("--" "/bin/bash" "-i")))
+;; (setq comint-terminfo-terminal "xterm-256color")
+;; (setq system-uses-terminfo 't)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Sort buffer menu by file path and name
@@ -107,6 +113,81 @@
 (defvar g-fwidth 3)
 (defvar g-lfmt "hi")
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Buffer Handling
+
+;; Move a buffer just opened in the currently selected window to a target
+;; buffer's window and restore the buffer that was previously in the selected
+;; window.
+(defun move-previously-made-buffer ()
+  (interactive)
+  (let* ((opened-buffer (current-buffer))
+	 (move-buffer opened-buffer))
+    (let* ((opened-window (get-buffer-window opened-buffer))
+	   (target-window workspace-target-window)
+	   (last-opened-buffer 
+	    (caar (window-prev-buffers opened-window))))
+      (progn (set-window-buffer opened-window last-opened-buffer)
+	     (set-window-buffer target-window move-buffer)))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                      Direx Functions and Overrides   
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; OVERRIDE
+;; Adjust direx:maybe-find-item to make sure that we only open the file on any
+;; given line if the cursor is actually ON the item in question; default behavior
+;; has it open the item if you click anywhere on that line.
+(defun direx:maybe-find-item (&optional item)
+  (interactive)
+  (setq item (or item (direx:item-at-point!)))
+  (let ((is-point-over-item
+	 (let* ((click-point (point))
+		(eol-point (progn (move-end-of-line 1) (point)))
+		(file-name (oref (oref item :tree) :name))
+		(left-margin (- eol-point (length file-name))))
+	   (and (< click-point eol-point)
+		(>= click-point left-margin)))))
+    (if is-point-over-item
+	(progn (if (direx:item-leaf-p item)
+		   (direx:find-item item)
+		 (direx:toggle-item item))))))
+
+;; Create a single peristent direx-buffer when invoked using the \C-xd shortcut. This
+;; direx buffer uses the local-workspace variable to open on.
+(defvar direx-buffer nil)
+(defun local-open-direx-buffer ()
+  (interactive)
+  (if (buffer-live-p direx-buffer)
+      (switch-to-buffer direx-buffer)
+    (progn (setq direx-buffer nil)
+	   (direx:find-directory local-workspace)
+	   (setq direx-buffer (current-buffer)))))
+
+;; Set a workspace-local target window variable that we can use in subsequent commands.
+(defvar workspace-target-window nil)
+(defun local-set-target-window ()
+  (interactive)
+  (setq workspace-target-window (get-buffer-window (current-buffer)))
+  (message (format "Set workspace target window to %s"
+		   (buffer-name (window-buffer workspace-target-window)))))
+
+;; Local function for keybinding copying the cursor's file's path into the kill ring.
+(defun direx:copy-file-path (&optional item)
+  (interactive)
+  (setq item (or item (direx:item-at-point!)))
+  (let ((file-path (oref (oref item :tree) :full-name)))
+    (kill-new file-path nil)))
+
+;; Local function for keybinding opening the given item in the local target buffer
+(defun direx:open-in-local-target-buffer (&optional item)
+  (interactive)
+  (setq item (or item (direx:item-at-point!)))
+  (select-window workspace-target-window)
+  (let ((file-path (oref (oref item :tree) :full-name)))
+    (find-file file-path)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                           Pretty Line Numbering                                 
@@ -162,6 +243,7 @@
  '(backup-directory-alist '(("." . "/home/kyle/.emacs.d/backup-dir")))
  '(c-mode-hook '((lambda nil (linum-mode 't))))
  '(column-number-mode t)
+ '(comint-use-prompt-regexp t)
  '(completion-auto-help 'lazy)
  '(custom-enabled-themes '(deeper-blue))
  '(emacs-lisp-mode-hook '((lambda nil (linum-mode 't))))
@@ -171,6 +253,7 @@
  '(package-selected-packages '("rust-mode" toml-mode yaml-mode ztree nav rust-mode))
  '(prog-mode-hook '(toggle-truncate-lines))
  '(rust-indent-offset 2)
+ '(shell-file-name "c:/Windows/System32/wsl.exe")
  '(show-paren-mode t)
  '(text-mode-hook '(text-mode-hook-identify toggle-truncate-lines))
  '(toml-mode-hook #'toggle-truncate-lines)
@@ -205,10 +288,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                           Workspace Related Defines                                 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defvar beagle-src "/home/kyle/o/BeagleProjects/")
-(defvar edk2-src (format "%sedk2/" beagle-src))
+;; (defvar beagle-src "/home/kyle/o/BeagleProjects/")
+;; (defvar edk2-src (format "%sedk2/" beagle-src))
 
-(defvar local-workspace beagle-src)
+;; (defvar local-workspace beagle-src)
+
+;; Windows WSL Path
+(setq wsl-path "//wsl$/openSUSE-Tumbleweed/home/kyle/")
+(defun ins-wsl-path () (insert wsl-path))
+(defvar local-workspace (format "%s/rust" wsl-path))
 
 
 
@@ -229,8 +317,13 @@
 ;; Set the font
 ;;(set-frame-font "-misc-fixed-medium-r-normal--20-*-75-75-c-100-iso8859-14" 't 't)
 ;;(set-frame-font "-misc-fixed-medium-r-normal--12-*-75-75-c-70-iso8859-1" 't 't)
-(set-frame-font "-1ASC-Liberation Mono-normal-normal-normal-*-*-*-*-*-m-0-iso10646-1" 't 't)
-(set-face-attribute 'default nil :height 85)
+;; (set-frame-font "-1ASC-Liberation Mono-normal-normal-normal-*-*-*-*-*-m-0-iso10646-1" 't 't)
+;; (set-frame-font "-outline-SimSun-normal-normal-normal-*-*-*-*-*-p-*-iso10646-1" 't 't)
+;; (set-frame-font "-outline-Lucida Console-normal-normal-normal-mono-*-*-*-*-c-*-iso10646-1" 't 't)
+;; (set-frame-font "-outline-Lucida Console-normal-normal-normal-mono-*-*-*-*-c-*-iso10646-1" 't 't)
+(set-frame-font "-outline-Consolas-normal-normal-normal-mono-*-*-*-*-c-*-iso10646-1" 't 't)
+;; (set-frame-font "-outline-Consolas-bold-normal-normal-mono-*-*-*-*-c-*-iso10646-1" 't 't)
+(set-face-attribute 'default nil :height 97)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -247,16 +340,8 @@
 (global-set-key "\C-xs" (lambda () (interactive) (switch-to-buffer "*shell*")))
 (global-set-key "\C-xj" (lambda () (interactive) (switch-to-buffer "*scratch*")))
 
-;; Create a single peristent direx-buffer when invoked using the \C-xd shortcut
-(defvar direx-buffer nil)
-(defun get-direx-buffer ()
-  (interactive)
-  (if (buffer-live-p direx-buffer)
-      (switch-to-buffer direx-buffer)
-    (progn (setq direx-buffer nil)
-	   (direx:find-directory local-workspace)
-	   (setq direx-buffer (current-buffer)))))
-(global-set-key "\C-xd" 'get-direx-buffer)
+;; Keybind opening our version of the direx buffer
+(global-set-key "\C-xd" 'local-open-direx-buffer)
 
 ;; Kill the buffer-file-name of the current buffer into the kill ring to yank later
 (global-set-key "\C-xg" (lambda () (interactive)
@@ -265,11 +350,15 @@
 				     (message (format "Stored buffer file path '%s'" buffer-file-name)))
 			    (message "Buffer has no name."))))
 
-(defvar direx-target-window nil)
-(global-set-key "\C-t" (lambda () (interactive)
-			 (setq direx-target-window (get-buffer-window (current-buffer)))
-			 (message (format "Set direx target window to %s"
-					  (buffer-name (window-buffer direx-target-window))))))
+;; Set our workspace-local "target-window" to which we can issue further commands.
+(global-set-key "\C-t" 'local-set-target-window)
+
+;; Custom buffer handling keybinds
+(global-set-key "\C-xe" 'move-previously-made-buffer)
+
+;; Add keybindings to the direx keymap for the two custom direx functions mentioned.
+(define-key direx:direx-mode-map "k" 'direx:copy-file-path)
+(define-key direx:direx-mode-map "o" 'direx:open-in-local-target-buffer)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
