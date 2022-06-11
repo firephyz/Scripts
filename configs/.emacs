@@ -38,12 +38,6 @@
 ;;     (debug)
 ;;     (apply shell-actual-func nil)))
 
-(defvar old-make-comint-in-buffer (symbol-function 'make-comint-in-buffer))
-(defun make-comint-in-buffer (name buffer program &optional startfile &rest switches)
-  (apply old-make-comint-in-buffer name buffer program startfile '("--" "/bin/bash" "-i")))
-;; (setq comint-terminfo-terminal "xterm-256color")
-;; (setq system-uses-terminfo 't)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Sort buffer menu by file path and name
 (load "buff-menu.el")
@@ -293,10 +287,7 @@
 
 ;; (defvar local-workspace beagle-src)
 
-;; Windows WSL Path
-(setq wsl-path "//wsl$/openSUSE-Tumbleweed/home/kyle/")
-(defun ins-wsl-path () (insert wsl-path))
-(defvar local-workspace (format "%s/rust" wsl-path))
+(defvar local-workspace "/home/kyle/dev/beagle")
 
 
 
@@ -315,15 +306,17 @@
 ;;                           Font and Visuals                                 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Set the font
-;;(set-frame-font "-misc-fixed-medium-r-normal--20-*-75-75-c-100-iso8859-14" 't 't)
-;;(set-frame-font "-misc-fixed-medium-r-normal--12-*-75-75-c-70-iso8859-1" 't 't)
+;; (set-frame-font "-misc-fixed-medium-r-normal--20-*-75-75-c-100-iso8859-14" 't 't)
+;; (set-frame-font "-misc-fixed-medium-r-normal--12-*-75-75-c-70-iso8859-1" 't 't)
 ;; (set-frame-font "-1ASC-Liberation Mono-normal-normal-normal-*-*-*-*-*-m-0-iso10646-1" 't 't)
 ;; (set-frame-font "-outline-SimSun-normal-normal-normal-*-*-*-*-*-p-*-iso10646-1" 't 't)
 ;; (set-frame-font "-outline-Lucida Console-normal-normal-normal-mono-*-*-*-*-c-*-iso10646-1" 't 't)
 ;; (set-frame-font "-outline-Lucida Console-normal-normal-normal-mono-*-*-*-*-c-*-iso10646-1" 't 't)
-(set-frame-font "-outline-Consolas-normal-normal-normal-mono-*-*-*-*-c-*-iso10646-1" 't 't)
+;; (set-frame-font "-outline-Consolas-normal-normal-normal-mono-*-*-*-*-c-*-iso10646-1" 't 't)
 ;; (set-frame-font "-outline-Consolas-bold-normal-normal-mono-*-*-*-*-c-*-iso10646-1" 't 't)
-(set-face-attribute 'default nil :height 97)
+;; (set-frame-font "-UKWN-Latin Modern Mono-normal-normal-normal-*-*-*-*-*-*-0-iso10646-1" 't 't)
+(progn (set-face-attribute 'default nil :height 75)
+       (set-frame-font "-1ASC-Liberation Mono-bold-normal-normal-*-*-*-*-*-*-0-iso10646-1" 't 't))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -501,19 +494,65 @@
 ;; next font. In the end, you'll have a list of fonts you liked
 ;; below the point.
 ;; (progn (insert "\n")
-;;        ;;       (dolist (f (x-list-fonts "*"))
-;;        (dolist (f c2)
-;; 	 (progn (ignore-errors (set-frame-font "-misc-fixed-medium-r-normal--20-*-75-75-c-100-iso8859-14" 't't))
-;; 		(ignore-errors (set-frame-font f 't 't))
-;; 		(kill-line)
-;; 		(insert f)
-;; 		(move-beginning-of-line nil)
-;; 		(let ((op (read-string "")))
-;; 		  (if (string-match-p "y" op)
-;; 		      (progn (move-beginning-of-line 2)
-;; 			     (insert (format "%s\n" f))
-;; 			     (move-beginning-of-line -1)))))))
-;;
+;;        (let ((ifont 0)
+;; 	     (nliked_fonts 0)
+;; 	     (xfont-list
+;; 	      (list "-UKWN-Nimbus Mono PS-bold-normal-normal-*-*-*-*-*-m-0-iso10646-1"
+;; 		    "-UKWN-Latin Modern Mono-normal-normal-normal-*-*-*-*-*-*-0-iso10646-1"
+;; 		    "-PfEd-DejaVu Sans Mono-normal-normal-normal-*-*-*-*-*-m-0-iso10646-1"
+;; 		    "-1ASC-Liberation Mono-bold-normal-normal-*-*-*-*-*-*-0-iso10646-1"
+;; 		    "-PfEd-DejaVu Sans Mono-normal-normal-normal-*-*-*-*-*-m-0-iso10646-1"
+;; 		    "-PfEd-DejaVu Sans Mono-bold-oblique-normal-*-*-*-*-*-m-0-iso10646-1"
+;; 		    "-PfEd-DejaVu Sans Mono-normal-oblique-normal-*-*-*-*-*-m-0-iso10646-1"
+;; 		    "-1ASC-Liberation Mono-normal-italic-normal-*-*-*-*-*-*-0-iso10646-1"
+;; 		    "-PfEd-DejaVu Sans Mono-bold-normal-normal-*-*-*-*-*-m-0-iso10646-1"
+;; 		    "-1ASC-Liberation Mono-normal-normal-normal-*-*-*-*-*-*-0-iso10646-1"
+;; 		    "-PfEd-DejaVu Sans Mono-bold-normal-normal-*-*-*-*-*-m-0-iso10646-1")))
+;; 	      ;;(x-list-fonts "*")))
+;; 	 (insert "\n\n\n")
+;; 	 (move-beginning-of-line -1)
+;; 	 (dolist (f xfont-list)
+;; 	   (if (string-match-p ".*mono.*" f)
+;; 	       (progn (ignore-errors (set-frame-font f 't 't))
+;; 		      ;; (kill-line)
+;; 		      (insert f)
+;; 		      (move-beginning-of-line nil)
+;; 		      (let ((op (read-string (format "%d/%d" ifont (length xfont-list)))))
+;; 			(if (string-match-p "y" op)
+;; 			    (progn (setq nliked_fonts (+ nliked_fonts 1))
+;; 				   (move-beginning-of-line 2)
+;; 				   (insert (format "LIKED %-3d %s\n" ifont f))
+;; 				   (move-beginning-of-line -1))
+;; 			  (progn (move-beginning-of-line (+ 3 nliked_fonts))
+;; 				 (insert (format "DENIED %-3d %s\n" ifont f))
+;; 				 (move-beginning-of-line (* -1 (+ 2 nliked_fonts)))))))
+;; 	     (progn (move-beginning-of-line (+ 3 nliked_fonts))
+;; 		    (insert (format "IGNORED %-3d %s\n" ifont f))
+;; 		    (move-beginning-of-line (* -1 (+ 2 nliked_fonts)))))
+;; 	   (setq ifont (+ ifont 1)))))
+
+;; -PfEd-DejaVu Sans Mono-bold-normal-normal-*-*-*-*-*-m-0-iso10646-1-1ASC-Liberation Mono-normal-normal-normal-*-*-*-*-*-*-0-iso10646-1-PfEd-DejaVu Sans Mono-bold-normal-normal-*-*-*-*-*-m-0-iso10646-1-1ASC-Liberation Mono-normal-italic-normal-*-*-*-*-*-*-0-iso10646-1-PfEd-DejaVu Sans Mono-normal-oblique-normal-*-*-*-*-*-m-0-iso10646-1-PfEd-DejaVu Sans Mono-bold-oblique-normal-*-*-*-*-*-m-0-iso10646-1-PfEd-DejaVu Sans Mono-normal-normal-normal-*-*-*-*-*-m-0-iso10646-1-1ASC-Liberation Mono-bold-normal-normal-*-*-*-*-*-*-0-iso10646-1-PfEd-DejaVu Sans Mono-normal-normal-normal-*-*-*-*-*-m-0-iso10646-1-UKWN-Latin Modern Mono-normal-normal-normal-*-*-*-*-*-*-0-iso10646-1-UKWN-Nimbus Mono PS-bold-normal-normal-*-*-*-*-*-m-0-iso10646-1
+
+;; (set-frame-font "-UKWN-Latin Modern Mono-normal-normal-normal-*-*-*-*-*-*-0-iso10646-1" 't 't)
+;; (progn (set-face-attribute 'default nil :height 75)
+;;        (set-frame-font "-PfEd-DejaVu Sans Mono-normal-normal-normal-*-*-*-*-*-m-0-iso10646-1" 't 't))
+;; (progn (set-face-attribute 'default nil :height 75)
+;;        (set-frame-font "-1ASC-Liberation Mono-normal-italic-normal-*-*-*-*-*-*-0-iso10646-1" 't 't))
+;; (progn (set-face-attribute 'default nil :height 82)
+;;        (set-frame-font "-UKWN-Nimbus Mono PS-bold-normal-normal-*-*-*-*-*-m-0-iso10646-1" 't 't))
+
+;; (progn (set-face-attribute 'default nil :height 75)
+;;        (set-frame-font "-1ASC-Liberation Mono-bold-normal-normal-*-*-*-*-*-*-0-iso10646-1" 't 't))
+
+;; (set-frame-font "-PfEd-DejaVu Sans Mono-normal-normal-normal-*-*-*-*-*-m-0-iso10646-1" 't 't)
+;; (set-frame-font "-PfEd-DejaVu Sans Mono-bold-oblique-normal-*-*-*-*-*-m-0-iso10646-1" 't 't)
+;; (set-frame-font "-PfEd-DejaVu Sans Mono-normal-oblique-normal-*-*-*-*-*-m-0-iso10646-1" 't 't)
+;; (set-frame-font "-PfEd-DejaVu Sans Mono-bold-normal-normal-*-*-*-*-*-m-0-iso10646-1" 't 't)
+;; (set-frame-font "-1ASC-Liberation Mono-normal-normal-normal-*-*-*-*-*-*-0-iso10646-1" 't 't)
+;; (set-frame-font "-PfEd-DejaVu Sans Mono-bold-normal-normal-*-*-*-*-*-m-0-iso10646-1" 't 't)
+
+;; (set-frame-font "-UKWN-Latin Modern Mono-normal-normal-normal-*-*-*-*-*-*-0-iso10646-1" 't 't)
+
 ;; Potential Like Fonts
 ;;
 ;; "-CYRE-Comfortaa-light-normal-normal-*-*-*-*-*-*-0-iso10646-1"

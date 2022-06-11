@@ -1,0 +1,269 @@
+A1. Introduction
+  Instruction Sets
+    ARMv7 and below, only 32-bit
+    Thumb
+      16-bit extension for increased code density at the cost of execution time
+      Includes a subset of the ARM functionality
+      Thumb-2 after ARMv6T2
+        Adds some 32-bit instructions to bring performance close to default 32-bit ARM (not THUMB)
+  Architecture Versions and Variants
+    ARMv7-A : Application profile, VMSA (virtual memory system architecture) with MMU
+    ARMv7-R : Real-time profile, PMSA (protected ...) with PMU
+    ARMv7-M : Microcontroller profile, variant of PMSA
+      Only supports THUMB
+      Programmer's model designed for low-latency interrupt processing
+      ...
+  Architecture Extensions
+    Jazelle
+    ThumbEE
+    FP
+      For ARMv7...
+      Formats: VFPv(3|4)[U][-D(16|32)]
+      VFPv3(-D32)
+        Also have optional VFPv3-D16 (halfword size)
+	VFPv3U supports trapping of floating point exceptions
+      VFPv4
+        Available in v7-A and v7-R (not M) architecture variants.
+	Also has U version to support trapping exceptions
+	??? "Add both the half-precision extension and fused multiply-add instructions to features of VFPv3..."
+	  Does this mean VFPv4 (full or not) always supports the VFPv3 half-precision extensions?
+    SIMD
+      If VFPv3, then support SIMDv1
+      If VFPv4, then support SIMDv2
+      If VFP uses half-precision, then so must the SIMD extension
+      ??? "Add both the half-precision extension and fused multiply-add instructions to features of VFPv3..."
+    Security Extensions - optional to v7-A
+    Multiprocessing Extensions - optional to v7-A and v7-R
+    Large Physical Address Extensions (LPAE) (for VMSA archs only)
+      Fine grain translation up to 40-bit address space
+      Requries multiprocessing extensions
+    Virtualization Extensions (to VMSA variants)
+      Virtualizes non-secure state of processor so a hypervisor can run multiple host OS...
+      Requires SE, LPAE, v7.1 debug
+      If Performance Monitors extension is implemented, then it must be v2.
+      If trace macrocell is implemented, then it must support virtualization extensions
+    Generic Timer Extension
+      Provides system timer and low-latency register interface
+      No requirements...
+    Performance Monitors Extension
+      Reserves CP15 register space for performance monitors
+      If v7.1 debug, then requires PMUv2 (performance monitor v2)
+  Memory Model
+    Exceptions on unaligned accesses
+    Access restictions to areas of memory
+    Virtual address translation
+    Little-Big endian switching
+    Controlling order of accessing memory
+    Controlling caches
+    MP memory synchronization
+A2. Application Level Programmer's Model
+  > Data & Integer Arithmetic
+  > Registers, ARM Core
+  > Execution State
+  > SIMD and VFP, and Polynomial Arithmetic
+
+  Applications execute at PL0 (lowest priviledge level)
+  Data Types
+    32-bit pointers
+    signed or unsigned 64,32,16 or 8 bit integers
+      64-bit integers held in two registers
+    Packed registers (two 16-bit integers or 4 8-bit integers)
+    Load/Stores move 32-bits or lower (sign extending as necessary)
+    Other nuances with packed registers and 64-bit integers... see below
+  Integer Arithmetic
+    LSL_C (shift > 0)  logical left shift, produce carry
+    LSL   (shift >= 0) logical left shift, discard carry
+    LSR_C (shift > 0)  logical right shift, produce carry
+    LSR   (shift >= 0) logical right shift, discard carry
+    ASR_C (shift > 0)  arith. right shift, signed-preserving LSR
+    ASR   (shift > 0)  arith. right shift, signed-preserving LSR
+    ROR_C (shift != 0) rotate right, produce carry from last shifted-off right bit
+    ROR                rotate right, discard carry
+    RRX_C              LSR_C by 1, introduce optional bit on left to extend, produce last shifted-off bit as carry
+    RRX                LSR_C by 1, introduce optional bit on left to extend, discard potential carry
+    Addition and Subtraction ...
+    Saturating Arithmetic ...
+  ARM Core Registers
+    R0-R12 (13 general purpose)
+    SP (R13) stack register. THUMB instructions generally can only use R13 as the stack pointer. ARM is more general.
+    LR (R14) link register. Holds return link information.
+    PC (R15) program counter. Reads <address of current instruction> + <word size>. THUMB generally cannot utilize this. ARM is more general.
+      Writing to PC
+        Lowest bits are tied to ground as necessary to produce word aligned or halfword aligned addresses.
+        THUMB: ADD and MOV instructions (bit 0 tied to ground to force halfword alignment).
+	Branch related instructions. BLX (already ensures value written to PC has correct alignment).
+	Others...
+	Load writes to PC function similar to branch-change-ISA-states
+	ALU writes to PC function similar to branch-change-ISA-states (ONLY if coming from ARM).
+    APSR (application program status register)
+      In v7-A and v7-R, the APSR is the same as the CPSR but APSR can only be used to access NZCVQ,GE...
+
+      31  27  23  19  15      8       0
+       |   |   |   |   |      |       |
+       NZCVQ| | UKN\  |    Reserved
+            RAZ/ SBZP |
+            SBZP    GE[3:0]
+
+      N - Negitive condition flag
+      Z - zero condition flag
+      C - carry condition
+      V - overflow condition
+      Q - Overflow or saturation condition
+      GE - Set with arithmetic on packed registers
+   Execution State
+     Functionality
+       ISETSTATE : Controls ISA mode (ARM, THUMB, ThumbEE or Jazelle).
+         Bitfield JT - 00=ARM, 01=THUMB, 10=Jazelle, 11=ThumbEE
+       ITSTATE : In Thumb, it contains condition codes that apply to the IT instruction
+         Bitfield IT[7:0]
+	   7:5 - holds 3-bit base condition. If 3'b0, no IT block is active.
+	   4:0 - <condition-code LSBs for each instruction> & 1'b1 & <4 - num-IT-instrs>'b0.
+	         i.e. 01100, 2 instruction block, Instr1 cond-code LSB is 0, Instr2 cond-code LSB is 1.
+         This field is LSL'ed by 1 every time an IT block instruction is executed.
+	 Branches may only occur as the last instruction in the block so that ITSTATE always advances to normal execution.
+       ENDIANSTATE : Data endianess. 0=little, 1=big
+         See SETEND <BE|LE> instruction to set endian state in ARM or THUMB. Unconditional.
+     in v7-A and v7-R, these are part of the CPSR.
+  SIMD and VFP Extensions
+    ...
+  Floating Point Data types and Arithmetic
+    ...
+  Polynomial Arithmetic
+    ...
+  Coprocessor Support
+    CPs
+      CP15 - system control. Arch and feature cpuid, control, status info and configuration. Perf mons.
+      CP14 - Debug, Thumb, Jazelle
+      CP10,CP11 - FP and vector operations. Control and configuration of VFP and SIMD extensions.
+      CP{8,9,12,13} - Reserved.
+      CP{0-7} - Vendor specific
+    CP14 and CP15 can mostly cannot be accessed in PL0 (only subset accessible at PL0).
+    VFP and SIMD instructions can be enabled to run at any priviledge level by configuring it in PL1.
+  ThumbEE
+    ...
+  Jazelle
+    ...
+  Exceptions, Debug events and Checks
+    System exceptions, causes entry into PL1 or PL2 and execution of an exception handler.
+      Application Level View:
+        Reset & Interrupts
+        Memory system aborts & Undefined instructions
+        Supervisor calls (SVCs)     - SVC instruction, supervisor exception, switch to PL1.
+        Secure monitor calls (SMCs) - SMC instruction, secure monitor exception (only from PL1 or PL1-defined PL0 methods...).
+        Hypervisor calls (HVCs) - HVC instruction, hypervisor call exception (only from PL1 or PL1-defined PL0 methods...).
+      WFI (wait for interrupt) enables low-power state until interrupt or exception occurs.
+      WFE (wait for event) enabels low-power state until (SEV?) event or interrupt or exception occurs.
+    FP Exceptions - Exceptional conditions encountered during FP arithmetic.
+    Jazelle Exceptions - Cause Jazelle hardward acceleration to exit into SW handler.
+    Debug - Cause debug system to take action.
+      Application Level View:
+        BKPT - instruction to cause debug event
+	DBG - instruction provides hint to debug system
+    Checks - ThumbEE extension checks and branches to releavent handlers.
+A3. Application Level Memory Model
+  32-bit Address space
+    Instruction execution or unaligned data access that wraps over (or under) the address space in UNPREDICTABLE
+  Alignment
+    ARM is 4-byte aligned, Thumb is 2-byte aligned.
+    ARMv7 supports some unaligned data access to Normal Memory.
+      Other memory types abort with an alignment fault if VMSA, otherwise UNPREDICTABLE.
+    SCTLR.A register
+      1: Alignment-fault Data Abort exception always
+      0: Some unaligned access
+        Word and Halfword Load/Store instructions, (T-verion or not) (LDR,LDRT,STR,STRT, etc)
+	Table Branch instructions
+	PUSH and POP, encodings T3 and A2 only
+	Load/Store vector with standard alignment
+    Always fault on unaligned access:
+      Load/Store multiple (or doubleword, or vector registers), SWP, RFE, SRS
+      Exclusive Load/Stores (atomic ops) 
+      Load/Stores to Coprocs
+      PUSH, POP (also with vector registers) except T3 and A2 encodings
+      Load/Store vector with align specified
+    PC-loading instructions must produce a word-aligned address
+    Unaligned accesses usually take a few additional cycles to complete
+  Endianess
+    Refers to _per-data-element-wise_ ordering of bytes.
+    Instructions: Always little-endian for v7-A, system-level-controllable for v7-R (for legacy code, and...?).
+    Reversal Instructions: REV, REV16 (packed halfwords), REVSH (signed halfword reverse)
+  Synchronization and semaphores
+    (LDREX|STREX)[B|H|D] or CLREX (clear exclusive)
+    Loads by atomic-capable observers tag a block of memory for exclusive access and stores clear that tag.
+    During a store, if the address has already been updated with a more recent value, then the write doesn't succeed and a flag is set (somewhere?...)
+    ...
+  Memory Types, Attributes, and Memory Order Model
+    Most-significant memory attr
+      Normal - Flash ROM, ROM, SRAM, DRAM and DDR memory
+        Supports unaligned accesses, access merging, speculative accessing
+	Is weakly-ordered meaning that if multi-observers are to observe multiple memory ops in order, then barriers must be explicitly used.
+	Shareability attributes on normal memory - define data coherency properties of region
+	  Applies to translation table walks only in a MP VMSA arch (so requires LPAE?).
+	  Non-shareable Normal Memory
+	    If cacheable, it does not ensure coherency across different observers. Cache maintenance ops must be explicitly used.
+	  Shareable Normal Memory
+	    VMSA - may be Shareable or Outer Shareable
+	    PMSA - Shareable and Outer shareable are treated the same.
+
+            Shareable makes independent data access coherent across multiple observers in a processor cluster (with its data and unified cached).
+	    Outer Shareable (for VMSA only) extends Sharebility affect across processor clusters.
+	Cacheable Normal Memory
+	  Modes (Policies)
+	    Non-Cacheable
+	    Write-Through Cacheable
+	      This (along with Non-cacheable) make completed writes from inside or outside the releavent level of cache visible to all inside or outside observers.
+	        Writes are immediately and globally coherent?
+	    Write-Back Cacheable
+	  Cache Allocation Hints
+	  Transient or Non-transient attributes (LPAE only) (Applicable to all other cache attributes)
+	    Transient restricts allocations to that cache to limit evictions of less-transient (more permenant) data elements.
+	  Cacheability attributes apply to observers outside of the Shareability domain.
+	  Inner vs Outer Cache - Two conceptual levels of cache.
+	    Inner/Outer cache doesn't necessaryily imply Inner/Outer shareability.
+	    Inner refers to innermost (cpu-closest and lowest levels of cache).
+	    All caches controlled by inner cacheability attrs must lie inside a cache controlled by outer cacheability attr or exist without any outer caches.
+      Device and Strongly-ordered
+        Accesses are more strict, non-speculative (generally) and non-cacheable.
+	  Strict in that accesses occur at program-written size and with program-written number of accesses.
+	Used for memory regions for which accesses may cause side-effects or where a value might change across multiple loads.
+	Never uses cache.
+	These regions are always have Shareable attr (except Device regions on non-LPAE archs)
+	  Non-LPAE archs Device regions might implement Shareability attribute but may not. Distinctions between Inner/Outer and Shareable/Nonshareble attrs may also not be respected.
+	Device vs. Strongly-ordered
+	  Strongly-ordered memory accesses complete only AFTER REACHING the peripheral or memory component accessed.
+	  Device memory accesses may complete BEFORE REACHING the destination.
+      Memory Access Restrictions
+        Memory types, shareability and cacheability attributes must be the same for all accesses generated from a single instruction.
+	Unaligned access - On VMSA to Device or strongly-ordered memory, abort with alignment fault. If not VMSA, unpredictable.
+	Accesses to device or strongly-ordered memory must not cross a 4KB boundary.
+	In PMSA and VMSA (with MMU enabled), loads/store instrs to PC must access only Normal memory. Otherwise unpredictable.
+	Instruction fetches must only access normal memory.
+	ARM strongly recommends that attributes assigned to a single memory location (across VM aliases for example) are the same.
+    Attributes
+      Shareability - Applicable to normal memory, Device memory is only Inner shareable unless we have LPAE (then also Outer shareable)
+      Cacheability - Normal memory only, non-cacheable, write-through cacheable or write-bach cacheable
+    Atomicity
+      Single-Copy Atomicity - All back-to-back atomic stores that overlap are in coherence order. An atomic load overlapping an atomic store must return
+        all data in coherence order of the overlapping load & store bytes.
+      Multi-Copy Atomic
+        In MP systems, all writes are serialized and observed in the same order by all observers. A read after a write doesn't occur until all observers observe that write.
+	Writes to normal memory are not MP atomic.
+	Writes to device and strongly-ordered memory that are single-copy atomic are also multi-copy atomic.
+      Accesses and Atomicity
+        Atomic processor accesses include:
+          all byte accesses, all halfword, word if properly aligned.
+        	doubleword accesses with LDREXD/STREXD if doubleword aligned
+        Multiple-byte access instructions (LDM, STM, PUSH, POP, vector LDM, etc) generate single-copy atomic word-aligned word accesses.
+        LPAE LDRD, STRD accesses are 64-bit single-copy atomic as seen by translation table walks and accesses to the tables.
+      Atomic sequences and aborts
+        Abort from Synchronous abort exceptions
+	Abort from IRQ, FIQ and asychronous aborts in low interrupt latency configuration
+	  - for asynch aborts, loads' registers are UNKNOWN after abort, except for address generation registers which are restored
+	    Locations of stores can contain unknown values
+        Upon normal return (prefered return address?) from the exception, the atomic operation is re-executed.
+      Implicit Use Summary
+        Cache linefills and evictions have no effect on single-copy atomicity
+	Instruction fetches are single-copy atomic based on ISA state (ARM, Thumb or Jazelle).
+	Translation table walks (and accesses?) are single-copy atomic based on the (Long|Short)-descriptor format.
+    Concurrent Instruction Modification with Execution
+      ...
+    
