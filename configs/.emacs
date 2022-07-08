@@ -4,6 +4,13 @@
 (require 'rust-mode)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Customize used global variables
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(setq comment-styles
+      (append comment-styles
+	      '((multi-line-flush t nil nil nil "One comment for all lines, flush with left edge."))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Create a wrapper around package-install so we don't initialize
 ;; and refresh melpa before we need it, every time we start up...
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -238,6 +245,7 @@
  '(c-mode-hook '((lambda nil (linum-mode 't))))
  '(column-number-mode t)
  '(comint-use-prompt-regexp t)
+ '(comint-prompt-regexp "^[^➤] ➤ *")
  '(completion-auto-help 'lazy)
  '(custom-enabled-themes '(deeper-blue))
  '(emacs-lisp-mode-hook '((lambda nil (linum-mode 't))))
@@ -247,7 +255,6 @@
  '(package-selected-packages '("rust-mode" toml-mode yaml-mode ztree nav rust-mode))
  '(prog-mode-hook '(toggle-truncate-lines))
  '(rust-indent-offset 2)
- '(shell-file-name "c:/Windows/System32/wsl.exe")
  '(show-paren-mode t)
  '(text-mode-hook '(text-mode-hook-identify toggle-truncate-lines))
  '(toml-mode-hook #'toggle-truncate-lines)
@@ -263,11 +270,12 @@
  '(verilog-indent-level-module 2)
  '(window-min-width 3))
 
-
 ;; Don't let emacs mistake this custom-set-variables as the one used
 ;; in auto customization
 (progn (custom-set-variables
 	'(toml-mode-hook #'toggle-truncate-lines)
+	'(asm-mode-hook '((lambda () (setq comment-start "//"))))
+	'(comment-style 'multi-line-flush)
 	'(verilog-indent-level 2)
 	'(verilog-indent-level-module 2)
 	'(verilog-indent-level-declaration 2)
@@ -605,3 +613,73 @@
 ;; "-ABAT-Cantarell-normal-normal-normal-*-*-*-*-*-*-0-iso10646-1"
 ;; "-OOoH-Liberation Sans Narrow-bold-italic-condensed-*-*-*-*-*-*-0-iso10646-1"
 ;; "-UKWN-TeX Gyre Cursor-normal-italic-normal-*-*-*-*-*-*-0-iso10646-1"
+
+;; (defun test ()
+;; (let ((flag (concat "# =================================================== \n"
+;;                     "# | * * * * * * * * * *------------------------------ \n"
+;;                     "# |  * * * * * * * * * ============================== \n"
+;;                     "# | * * * * * * * * *  ------------------------------ \n"
+;;                     "# |  * * * * * * * * * ============================== \n"
+;;                     "# | * * * * * * * * *  ------------------------------ \n"
+;;                     "# |  * * * * * * * * * ============================== \n"
+;;                     "# | ------------------------------------------------- \n"
+;;                     "# | ================================================= \n"
+;;                     "# | ------------------------------------------------- \n"
+;;                     "# | ================================================= \n"
+;;                     "# | ------------------------------------------------- \n"
+;;                     "# | ================================================= \n"
+;;                     "# | ------------------------------------------------- \n"
+;;                     "# | ================================================= \n")))
+;;   (progn (insert flag)
+;;          (move-beginning-of-line -6)
+;;          (dolist (l (let ((s nil))
+;;                    (dolist (n (number-sequence 1 15 2))
+;;                      (setq s (append s (list n (+ 1 (* -1 n))))))
+;;                    s))
+;;            (progn (move-beginning-of-line l) (kill-line)
+;;                   (sit-for 0.1)))
+;;          (mark)
+;;          (move-beginning-of-line 15)
+;; 	 (delete-rectangle))))
+
+;; (test)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;; (dolist (a '(1 0 3 -2 5 -4 7 -6 9 -8 11 -10 13 -12 15)
+
+;; (concat "# ==================================================="
+;;         "# | * * * * * * * * * *------------------------------"
+;;         "# |  * * * * * * * * * =============================="
+;;         "# | * * * * * * * * *  ------------------------------"
+;;         "# |  * * * * * * * * * =============================="
+;;         "# | * * * * * * * * *  ------------------------------"
+;;         "# |  * * * * * * * * * =============================="
+;;         "# | -------------------------------------------------"
+;;         "# | ================================================="
+;;         "# | -------------------------------------------------"
+;;         "# | ================================================="
+;;         "# | -------------------------------------------------"
+;;         "# | ================================================="
+;;         "# | -------------------------------------------------"
+;;         "# | =================================================")
+
