@@ -1,4 +1,10 @@
-test -z ${QEMU_SRC_PATH} && echo Set QEMU_SRC_PATH && exit 1
+if [[ -z ${QEMU_SRC_PATH} ]]; then
+    echo Set QEMU_SRC_PATH
+    exit 1
+else
+    QEMU_SRC_PATH=$(readlink -f ${QEMU_SRC_PATH})
+fi
+
 #test -z ${QEMU_BUILD_PATH} && QEMU_BUILD_PATH=$(readlink -f $(pwd)/qemu-build)
 test -z ${QEMU_BUILD_PATH} && QEMU_BUILD_PATH=$(readlink -f ~/builds/qemu)
 
@@ -50,7 +56,6 @@ ${QEMU_SRC_PATH}/configure \
 		--disable-curl \
 		--disable-membarrier \
 		--enable-fdt \
-		--disable-bluez \
 		--enable-kvm \
 		--disable-hax \
 		--disable-hvf \
@@ -96,7 +101,6 @@ ${QEMU_SRC_PATH}/configure \
 		--disable-xfsctl \
 		--disable-qom-cast-debug \
 		--enable-tools \
-		--disable-vxhs \
 		--enable-bochs \
 		--disable-cloop \
 		--disable-dmg \
@@ -105,7 +109,6 @@ ${QEMU_SRC_PATH}/configure \
 		--disable-vvfat \
 		--disable-qed \
 		--disable-parallels \
-		--disable-sheepdog \
 		--disable-crypto-afalg \
 		--disable-capstone \
 		--disable-debug-mutex \
