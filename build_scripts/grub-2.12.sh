@@ -40,7 +40,7 @@
   #                         (default=no)
   --enable-grub-mkfont
   --disable-grub-themes
-  --enable-grub-mount
+#  --enable-grub-mount
   --enable-device-mapper
   # --enable-liblzma        enable liblzma integration (default=guessed)
   # --enable-libzfs         enable libzfs integration (default=guessed)
