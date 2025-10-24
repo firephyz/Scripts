@@ -1,0 +1,24 @@
+#namespace build
+function build.transform_arg_listing () {
+    m.script_start | grep -vE "^[[:space:]]*#|^\$"
+}
+
+# Locate inline-script start with '<EOS' delimiter
+function m.script_start () {
+  N=$(cat $0 | sed -n '/<EOS/{n;=;q}'); cat $0 | tail -n +$N
+}; export -f m.script_start
+
+
+set -e
+case $# in
+    0 | 1 )
+	script=configure
+	build_dir=${1-.}
+	;;
+    2 )
+	script=$1
+	build_dir=${2-.}
+	;;
+esac
+$build_dir/$script $(build.transform_arg_listing)
+exit 0
